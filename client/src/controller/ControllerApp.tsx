@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { LobbyMessage, ServerMessage } from '../types/ws'
+import { disableControllerTextSelection } from './disableTextSelection.js'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -18,6 +19,10 @@ export function ControllerApp() {
   const [jump, setJump] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
+
+  useEffect(() => {
+    return disableControllerTextSelection()
+  }, [])
 
   useEffect(() => {
     if (!name) return
