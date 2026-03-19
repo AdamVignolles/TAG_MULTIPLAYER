@@ -2,11 +2,21 @@
 import { WebSocketServer, WebSocket } from "ws";
 
 type Role = "screen" | "controller";
+type GameMode = "classic" | "turbo";
 
 type JoinMessage = {
     type: "join";
     role: Role;
     name?: string;
+};
+
+type SetModeMessage = {
+    type: "set_mode";
+    mode: GameMode;
+};
+
+type StartGameMessage = {
+    type: "start_game";
 };
 
 type InputMessage = {
@@ -16,7 +26,7 @@ type InputMessage = {
     jump: boolean;
 };
 
-type ClientMessage = JoinMessage | InputMessage;
+type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage;
 
 type Player = {
     id: string;
@@ -96,12 +106,31 @@ const ARENA_WIDTH = 900;
 const ARENA_HEIGHT = 500;
 const PLAYER_RADIUS = 16;
 const FLOOR_Y = ARENA_HEIGHT - 50;
-const SPEED = 220;
-const GRAVITY = 1100;
-const JUMP_FORCE = 460;
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
-const ROUND_DURATION_MS = 60_000;
+
+const MODE_CONFIG: Record<GameMode, {
+    label: string;
+    speed: number;
+    gravity: number;
+    jumpForce: number;
+    roundDurationMs: number;
+}> = {
+    classic: {
+        label: "Classique",
+        speed: 220,
+        gravity: 1100,
+        jumpForce: 460,
+        roundDurationMs: 60_000,
+    },
+    turbo: {
+        label: "Turbo",
+        speed: 280,
+        gravity: 1250,
+        jumpForce: 500,
+        roundDurationMs: 45_000,
+    },
+};
 
 // map depends on arena constants, create after they are defined
 createSimpleMap();
@@ -114,6 +143,8 @@ let playerCounter = 1;
 let tagPlayerId: string | null = null;
 let lastTagTs = 0;
 let roundStartTs = Date.now();
+let gameMode: GameMode = "classic";
+let gameStarted = false;
 
 function send(ws: WebSocket, payload: unknown) {
     if (ws.readyState === WebSocket.OPEN) {
@@ -131,7 +162,18 @@ function broadcast(payload: unknown) {
 }
 
 function getRemainingMs() {
-    return Math.max(0, ROUND_DURATION_MS - (Date.now() - roundStartTs));
+    const mode = MODE_CONFIG[gameMode];
+    return Math.max(0, mode.roundDurationMs - (Date.now() - roundStartTs));
+}
+
+function broadcastLobby() {
+    broadcast({
+        type: "lobby",
+        mode: gameMode,
+        modeLabel: MODE_CONFIG[gameMode].label,
+        connectedPlayers: players.size,
+        started: gameStarted,
+    });
 }
 
 function spawnPlayer(id: string, name: string): Player {
@@ -154,6 +196,10 @@ function spawnPlayer(id: string, name: string): Player {
 }
 
 function resetRoundIfNeeded() {
+    if (!gameStarted) {
+        return;
+    }
+
     if (getRemainingMs() > 0) {
         return;
     }
@@ -181,12 +227,18 @@ function resetRoundIfNeeded() {
 }
 
 function updateGame(dt: number) {
+    if (!gameStarted) {
+        return;
+    }
+
+    const mode = MODE_CONFIG[gameMode];
+
     players.forEach((player) => {
         const horizontal = Number(player.input.right) - Number(player.input.left);
-        player.vx = horizontal * SPEED;
+        player.vx = horizontal * mode.speed;
 
         if (player.input.jump && !player.jumpLatch && player.jumpsLeft > 0) {
-            player.vy = -JUMP_FORCE;
+            player.vy = -mode.jumpForce;
             player.onGround = false;
             player.jumpsLeft -= 1;
             player.jumpLatch = true;
@@ -194,7 +246,7 @@ function updateGame(dt: number) {
             player.jumpLatch = false;
         }
 
-        player.vy += GRAVITY * dt;
+        player.vy += mode.gravity * dt;
         player.x += player.vx * dt;
         player.y += player.vy * dt;
 
@@ -213,7 +265,7 @@ function updateGame(dt: number) {
 
                 // apply tile effects
                 if (tile.type === 'jumpBoost') {
-                    player.vy = -JUMP_FORCE * 1.25;
+                    player.vy = -mode.jumpForce * 1.25;
                 }
                 if (tile.type === 'speedUp') {
                     // temporarily increase speed while on tile
@@ -260,6 +312,7 @@ function updateGame(dt: number) {
 
     broadcast({
         type: "state",
+        mode: gameMode,
         arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
         remainingMs: getRemainingMs(),
         tagPlayerId,
@@ -307,7 +360,6 @@ wss.on("connection", (ws: WebSocket) => {
 
                 if (!tagPlayerId) {
                     tagPlayerId = id;
-                    roundStartTs = Date.now();
                     lastTagTs = Date.now();
                 }
 
@@ -321,6 +373,58 @@ wss.on("connection", (ws: WebSocket) => {
                 send(ws, { type: "joined", role: "screen" });
             }
 
+            broadcastLobby();
+
+            return;
+        }
+
+        if (msg.type === "set_mode") {
+            if (meta.role !== "screen") {
+                return;
+            }
+
+            if (!(msg.mode in MODE_CONFIG)) {
+                send(ws, { type: "error", message: "Mode invalide" });
+                return;
+            }
+
+            gameMode = msg.mode;
+            broadcastLobby();
+            return;
+        }
+
+        if (msg.type === "start_game") {
+            if (meta.role !== "screen") {
+                return;
+            }
+
+            if (players.size === 0) {
+                send(ws, { type: "error", message: "Aucun joueur connecté" });
+                return;
+            }
+
+            gameStarted = true;
+            roundStartTs = Date.now();
+            lastTagTs = Date.now();
+            tagPlayerId = players.values().next().value?.id ?? null;
+
+            players.forEach((player) => {
+                player.x = 120 + ((Math.random() * 600) | 0);
+                player.y = FLOOR_Y;
+                player.vx = 0;
+                player.vy = 0;
+                player.onGround = true;
+                player.jumpsLeft = MAX_JUMPS;
+                player.input.left = false;
+                player.input.right = false;
+                player.input.jump = false;
+            });
+
+            broadcast({
+                type: "game_started",
+                mode: gameMode,
+            });
+            broadcastLobby();
             return;
         }
 
@@ -350,6 +454,14 @@ wss.on("connection", (ws: WebSocket) => {
                 lastTagTs = Date.now();
             }
         }
+
+        if (players.size === 0) {
+            gameStarted = false;
+            roundStartTs = Date.now();
+            tagPlayerId = null;
+        }
+
+        broadcastLobby();
     });
 });
 
