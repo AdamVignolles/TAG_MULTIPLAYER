@@ -1,5 +1,5 @@
 export type Role = 'screen' | 'controller'
-export type GameMode = 'classic' | 'turbo'
+export type GameMode = 'classic' | 'zombie' | 'bomb'
 
 export type PlayerView = {
   id: string

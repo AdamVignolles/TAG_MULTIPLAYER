@@ -2,7 +2,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 
 type Role = "screen" | "controller";
-type GameMode = "classic" | "turbo";
+type GameMode = "classic" | "zombie" | "bomb";
 
 type JoinMessage = {
     type: "join";
@@ -111,24 +111,35 @@ const TAG_COOLDOWN_MS = 800;
 
 const MODE_CONFIG: Record<GameMode, {
     label: string;
-    speed: number;
+    baseSpeed: number;
+    tagSpeedBonus: number;
     gravity: number;
     jumpForce: number;
     roundDurationMs: number;
 }> = {
     classic: {
         label: "Classique",
-        speed: 220,
+        baseSpeed: 220,
+        tagSpeedBonus: 18,
         gravity: 1100,
         jumpForce: 460,
-        roundDurationMs: 60_000,
+        roundDurationMs: 180000,
     },
-    turbo: {
-        label: "Turbo",
-        speed: 280,
+    zombie: {
+        label: "Zombie",
+        baseSpeed: 230,
+        tagSpeedBonus: 12,
+        gravity: 1120,
+        jumpForce: 470,
+        roundDurationMs: 120000,
+    },
+    bomb: {
+        label: "Bombe",
+        baseSpeed: 240,
+        tagSpeedBonus: 14,
         gravity: 1250,
         jumpForce: 500,
-        roundDurationMs: 45_000,
+        roundDurationMs: 90000,
     },
 };
 
@@ -195,6 +206,15 @@ function spawnPlayer(id: string, name: string): Player {
     };
 }
 
+function pickRandomPlayerId(): string | null {
+    const ids = [...players.keys()];
+    if (ids.length === 0) {
+        return null;
+    }
+    const randomIndex = Math.floor(Math.random() * ids.length);
+    return ids[randomIndex] ?? null;
+}
+
 function resetRoundIfNeeded() {
     if (!gameStarted) {
         return;
@@ -206,9 +226,13 @@ function resetRoundIfNeeded() {
 
     const loserId = tagPlayerId;
     const loserName = loserId ? players.get(loserId)?.name ?? "Inconnu" : "Inconnu";
+    const winners = [...players.values()]
+        .filter((player) => player.id !== loserId)
+        .map((player) => player.name);
+    const winnersText = winners.length > 0 ? winners.join(", ") : "personne";
     broadcast({
         type: "game_over",
-        message: `${loserName} est TAG à la fin du temps !`,
+        message: `${loserName} est TAG à la fin du temps : il perd. Gagnants: ${winnersText}.`,
     });
 
     players.forEach((player) => {
@@ -221,8 +245,7 @@ function resetRoundIfNeeded() {
     });
 
     roundStartTs = Date.now();
-    const first = players.values().next().value as Player | undefined;
-    tagPlayerId = first?.id ?? null;
+    tagPlayerId = pickRandomPlayerId();
     lastTagTs = Date.now();
 }
 
@@ -235,7 +258,8 @@ function updateGame(dt: number) {
 
     players.forEach((player) => {
         const horizontal = Number(player.input.right) - Number(player.input.left);
-        player.vx = horizontal * mode.speed;
+        const speed = player.id === tagPlayerId ? mode.baseSpeed + mode.tagSpeedBonus : mode.baseSpeed;
+        player.vx = horizontal * speed;
 
         if (player.input.jump && !player.jumpLatch && player.jumpsLeft > 0) {
             player.vy = -mode.jumpForce;
@@ -406,7 +430,7 @@ wss.on("connection", (ws: WebSocket) => {
             gameStarted = true;
             roundStartTs = Date.now();
             lastTagTs = Date.now();
-            tagPlayerId = players.values().next().value?.id ?? null;
+            tagPlayerId = pickRandomPlayerId();
 
             players.forEach((player) => {
                 player.x = 120 + ((Math.random() * 600) | 0);
@@ -449,8 +473,7 @@ wss.on("connection", (ws: WebSocket) => {
             players.delete(removedId);
 
             if (tagPlayerId === removedId) {
-                const next = players.values().next().value as Player | undefined;
-                tagPlayerId = next?.id ?? null;
+                tagPlayerId = pickRandomPlayerId();
                 lastTagTs = Date.now();
             }
         }
