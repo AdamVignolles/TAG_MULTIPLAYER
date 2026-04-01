@@ -222,7 +222,7 @@ button {
 }
 
 .controller-grid {
-  width: min(720px, 94vw);
+  width: min(800px, 94vw);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -230,14 +230,14 @@ button {
 
 .control-column {
   display: grid;
-  gap: 1rem;
+  gap: 0rem;
 }
 
 .control {
   min-height: 72px;
   font-size: 1rem;
-  padding:  1rem 3rem;
 }
+
 
 .control.jump {
   background: #efc85d;
@@ -255,6 +255,11 @@ button {
 
 .horizontal-controls .control {
   flex: 1;
+  padding: 5rem 3rem;
+}
+
+.vertical-controls .control {
+  padding: 3rem 5rem;
 }
 
 .control.active {
