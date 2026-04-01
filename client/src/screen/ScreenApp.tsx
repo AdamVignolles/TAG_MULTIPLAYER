@@ -13,7 +13,8 @@ function formatTime(ms: number) {
 
 const MODE_LABEL: Record<GameMode, string> = {
   classic: 'Classique',
-  turbo: 'Turbo',
+  zombie: 'Zombie',
+  bomb: 'Bombe',
 }
 
 export function ScreenApp() {
@@ -166,10 +167,16 @@ export function ScreenApp() {
               Classique
             </button>
             <button
-              className={lobby.mode === 'turbo' ? 'active' : ''}
-              onClick={() => sendMode('turbo')}
+              className={lobby.mode === 'zombie' ? 'active' : ''}
+              onClick={() => sendMode('zombie')}
             >
-              Turbo
+              Zombie
+            </button>
+            <button
+              className={lobby.mode === 'bomb' ? 'active' : ''}
+              onClick={() => sendMode('bomb')}
+            >
+              Bombe
             </button>
           </div>
 
