@@ -222,21 +222,39 @@ button {
 }
 
 .controller-grid {
-  width: min(520px, 94vw);
+  width: min(720px, 94vw);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.control-column {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.8rem;
+  gap: 1rem;
 }
 
 .control {
   min-height: 72px;
   font-size: 1rem;
+  padding:  1rem 3rem;
 }
 
 .control.jump {
-  grid-column: 1 / -1;
   background: #efc85d;
   color: #261b04;
+}
+
+.control.down {
+  background: #f0b667;
+  color: #291903;
+}
+
+.horizontal-controls{
+  display: flex;
+}
+
+.horizontal-controls .control {
+  flex: 1;
 }
 
 .control.active {
@@ -266,5 +284,18 @@ button {
   .controller-name-card form {
     grid-template-columns: 1fr;
     display: grid;
+  }
+}
+
+@media (orientation: portrait) {
+  .controller-force-landscape {
+    position: fixed;
+    width: 100vh;
+    height: 100vw;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
+    overflow-y: auto;
   }
 }

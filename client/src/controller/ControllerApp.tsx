@@ -17,11 +17,23 @@ export function ControllerApp() {
   const [left, setLeft] = useState(false)
   const [right, setRight] = useState(false)
   const [jump, setJump] = useState(false)
+  const [down, setDown] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
     return disableControllerTextSelection()
+  }, [])
+
+  useEffect(() => {
+    const orientation = screen.orientation as ScreenOrientation & {
+      lock?: (orientation: string) => Promise<void>
+    }
+    if (!orientation.lock) return
+
+    orientation.lock('landscape').catch(() => {
+      // Certains navigateurs bloquent le verrouillage sans plein ecran.
+    })
   }, [])
 
   useEffect(() => {
@@ -129,7 +141,7 @@ export function ControllerApp() {
 
   if (!name) {
     return (
-      <main className="controller-name-layout">
+      <main className="controller-name-layout controller-force-landscape">
         <section className="controller-name-card">
           <h1>Choisis ton pseudo</h1>
           <p>Entre ton pseudo pour rejoindre la partie.</p>
@@ -150,7 +162,7 @@ export function ControllerApp() {
 
   if (!lobby?.started) {
     return (
-      <main className="controller-layout waiting">
+      <main className="controller-layout waiting controller-force-landscape">
         <h1>Salut {name}</h1>
         <p>Statut: {status}</p>
         <p>ID joueur: {playerId ?? 'en attente...'}</p>
@@ -160,38 +172,49 @@ export function ControllerApp() {
   }
 
   return (
-    <main className="controller-layout">
-      <h1>Controleur</h1>
+    <main className="controller-layout controller-force-landscape">
       <p>Joueur: {name}</p>
-      <p>ID: {playerId ?? 'en attente...'}</p>
-      <p>Statut: {status}</p>
-      <p className="log">{log || 'Utilise les boutons pour jouer.'}</p>
 
       <div className="controller-grid">
-        <button
-          className={`control ${left ? 'active' : ''}`}
-          onPointerDown={() => setLeft(true)}
-          onPointerUp={() => setLeft(false)}
-          onPointerLeave={() => setLeft(false)}
-        >
-          Gauche
-        </button>
-        <button
-          className={`control ${right ? 'active' : ''}`}
-          onPointerDown={() => setRight(true)}
-          onPointerUp={() => setRight(false)}
-          onPointerLeave={() => setRight(false)}
-        >
-          Droite
-        </button>
-        <button
-          className={`control jump ${jump ? 'active' : ''}`}
-          onPointerDown={() => setJump(true)}
-          onPointerUp={() => setJump(false)}
-          onPointerLeave={() => setJump(false)}
-        >
-          Saut
-        </button>
+        
+
+        <div className="control-column horizontal-controls">
+          <button
+            className={`control ${left ? 'active' : ''}`}
+            onPointerDown={() => setLeft(true)}
+            onPointerUp={() => setLeft(false)}
+            onPointerLeave={() => setLeft(false)}
+          >
+            Gauche
+          </button>
+          <button
+            className={`control ${right ? 'active' : ''}`}
+            onPointerDown={() => setRight(true)}
+            onPointerUp={() => setRight(false)}
+            onPointerLeave={() => setRight(false)}
+          >
+            Droite
+          </button>
+        </div>
+
+        <div className="control-column vertical-controls">
+          <button
+            className={`control jump ${jump ? 'active' : ''}`}
+            onPointerDown={() => setJump(true)}
+            onPointerUp={() => setJump(false)}
+            onPointerLeave={() => setJump(false)}
+          >
+            Haut
+          </button>
+          <button
+            className={`control down ${down ? 'active' : ''}`}
+            onPointerDown={() => setDown(true)}
+            onPointerUp={() => setDown(false)}
+            onPointerLeave={() => setDown(false)}
+          >
+            Bas
+          </button>
+        </div>
       </div>
     </main>
   )
