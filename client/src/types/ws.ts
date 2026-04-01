@@ -7,6 +7,7 @@ export type PlayerView = {
   x: number
   y: number
   radius: number
+  isTag?: boolean
 }
 
 export type TileView = {

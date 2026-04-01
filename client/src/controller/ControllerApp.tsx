@@ -11,7 +11,7 @@ export function ControllerApp() {
   const [nameInput, setNameInput] = useState('')
   const [name, setName] = useState<string | null>(null)
   const [playerId, setPlayerId] = useState<string | null>(null)
-  const [log, setLog] = useState('')
+  const [, setLog] = useState('')
   const [lobby, setLobby] = useState<LobbyMessage | null>(null)
 
   const [left, setLeft] = useState(false)

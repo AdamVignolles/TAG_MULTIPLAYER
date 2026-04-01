@@ -232,7 +232,7 @@ export function ScreenApp() {
         })}
 
         {(gameState?.players ?? []).map((player) => {
-          const isTag = gameState?.tagPlayerId === player.id
+          const isTag = gameState?.mode === 'zombie' ? player.isTag : gameState?.tagPlayerId === player.id
 
           return (
             <div
@@ -243,6 +243,7 @@ export function ScreenApp() {
                 top: `${player.y - player.radius}px`,
                 width: `${player.radius * 2}px`,
                 height: `${player.radius * 2}px`,
+                background: isTag ? '#ff0000' : '#0066ff',
               }}
               title={player.name}
             >
