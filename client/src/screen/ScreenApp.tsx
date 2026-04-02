@@ -133,6 +133,17 @@ export function ScreenApp() {
     wsRef.current.send(JSON.stringify({ type: 'start_game' }))
   }
 
+  function goHome() {
+    setLobby((prev) => ({ ...prev, started: false }))
+    setGameState(null)
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'stop_game' }))
+    }
+
+    setLog('Retour a l accueil...')
+  }
+
   if (!lobby.started) {
     return (
       <main className="screen-home">
@@ -145,7 +156,7 @@ export function ScreenApp() {
             )}`}
             alt="QR code pour rejoindre en tant que controleur"
           />
-          <p className="qr-hint">Les joueurs rejoignent uniquement via ce QR code.</p>
+          <p className="qr-hint">Les joueurs rejoignent uniquement via ce QR code ou via l'url ci dessous.</p>
           <p className="small-url">{controllerUrl}</p>
 
           <div className="lobby-info-grid">
@@ -184,7 +195,6 @@ export function ScreenApp() {
             Lancer la partie
           </button>
           <p className="status">Statut: {status}</p>
-          <p className="status">{log || 'En attente des joueurs...'}</p>
         </section>
       </main>
     )
@@ -196,6 +206,9 @@ export function ScreenApp() {
   return (
     <main className="screen-layout">
       <header className="topbar">
+        <button className="home-button" onClick={goHome} title="Retour a l accueil" aria-label="Retour a l accueil">
+          <i className="fas fa-home" aria-hidden="true" />
+        </button>
         <strong>Ecran principal</strong>
         <span>{status}</span>
         <span>Mode: {MODE_LABEL[lobby.mode]}</span>

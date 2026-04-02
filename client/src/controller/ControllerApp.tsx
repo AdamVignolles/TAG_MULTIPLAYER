@@ -11,6 +11,7 @@ export function ControllerApp() {
   const [nameInput, setNameInput] = useState('')
   const [name, setName] = useState<string | null>(null)
   const [playerId, setPlayerId] = useState<string | null>(null)
+  const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE'>('FREE')
   const [, setLog] = useState('')
   const [lobby, setLobby] = useState<LobbyMessage | null>(null)
 
@@ -20,6 +21,7 @@ export function ControllerApp() {
   const [down, setDown] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
+  const playerIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     return disableControllerTextSelection()
@@ -76,6 +78,20 @@ export function ControllerApp() {
 
               if (data.type === 'joined' && data.playerId) {
                 setPlayerId(data.playerId)
+                playerIdRef.current = data.playerId
+                setPlayerTagState('FREE')
+                return
+              }
+
+              if (data.type === 'state') {
+                const currentPlayerId = playerIdRef.current
+                if (!currentPlayerId) return
+
+                const me = data.players.find((p) => p.id === currentPlayerId)
+                if (!me) return
+
+                const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : data.tagPlayerId === me.id
+                setPlayerTagState(isTag ? 'TAG' : 'FREE')
                 return
               }
 
@@ -100,6 +116,8 @@ export function ControllerApp() {
           ws.onclose = () => {
             setStatus('Deconnecte')
             wsRef.current = null
+            playerIdRef.current = null
+            setPlayerTagState('FREE')
           }
 
           ws.send(JSON.stringify({ type: 'join', role: 'controller', name }))
@@ -123,14 +141,66 @@ export function ControllerApp() {
         // no-op
       }
       wsRef.current = null
+      playerIdRef.current = null
     }
   }, [name])
+
+  // Refs pour tracker les pointers actifs sur chaque bouton
+  const activePointersRef = useRef<Map<string, Set<number>>>(new Map([
+    ['left', new Set()],
+    ['right', new Set()],
+    ['jump', new Set()],
+    ['down', new Set()]
+  ]))
+
+  // Gestion robuste des événements de relâchement au niveau du document
+  useEffect(() => {
+    function handlePointerUp(e: PointerEvent) {
+      for (const pointers of activePointersRef.current.values()) {
+        pointers.delete(e.pointerId)
+      }
+      
+      // Mettre à jour l'état en fonction des pointers restants
+      setLeft(activePointersRef.current.get('left')!.size > 0)
+      setRight(activePointersRef.current.get('right')!.size > 0)
+      setJump(activePointersRef.current.get('jump')!.size > 0)
+      setDown(activePointersRef.current.get('down')!.size > 0)
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      // Pour les touches, on utilise l'identifier
+      const activeTouches = new Set(Array.from(e.touches).map(t => t.identifier))
+      
+      for (const [button, pointers] of activePointersRef.current.entries()) {
+        const newPointers = new Set([...pointers].filter(p => activeTouches.has(p)))
+        activePointersRef.current.set(button, newPointers)
+      }
+      
+      // Mettre à jour l'état
+      setLeft(activePointersRef.current.get('left')!.size > 0)
+      setRight(activePointersRef.current.get('right')!.size > 0)
+      setJump(activePointersRef.current.get('jump')!.size > 0)
+      setDown(activePointersRef.current.get('down')!.size > 0)
+    }
+
+    document.addEventListener('pointerup', handlePointerUp as EventListener)
+    document.addEventListener('pointercancel', handlePointerUp as EventListener)
+    document.addEventListener('touchend', handleTouchEnd)
+    document.addEventListener('touchcancel', handleTouchEnd)
+
+    return () => {
+      document.removeEventListener('pointerup', handlePointerUp as EventListener)
+      document.removeEventListener('pointercancel', handlePointerUp as EventListener)
+      document.removeEventListener('touchend', handleTouchEnd)
+      document.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [])
 
   useEffect(() => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
 
-    wsRef.current.send(JSON.stringify({ type: 'input', left, right, jump }))
-  }, [left, right, jump])
+    wsRef.current.send(JSON.stringify({ type: 'input', left, right, jump, down }))
+  }, [left, right, jump, down])
 
   function submitName(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -138,6 +208,8 @@ export function ControllerApp() {
     if (!trimmed) return
     setName(trimmed)
   }
+
+  const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
 
   if (!name) {
     return (
@@ -165,7 +237,7 @@ export function ControllerApp() {
       <main className="controller-layout waiting controller-force-landscape">
         <h1>Salut {name}</h1>
         <p>Statut: {status}</p>
-        <p>ID joueur: {playerId ?? 'en attente...'}</p>
+        <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
         <p className="log">En attente du lancement de partie sur l'ecran principal.</p>
       </main>
     )
@@ -173,7 +245,13 @@ export function ControllerApp() {
 
   return (
     <main className="controller-layout controller-force-landscape">
-      <p>Joueur: {name}</p>
+      <div className="infosJoueur">
+        <p>Joueur: {name}</p>
+        <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
+        <p>
+          <span className={`player-tag-state ${playerTagState === 'TAG' ? 'tag' : 'free'}`}>Tu es {playerTagState}</span>
+        </p>
+      </div>
 
       <div className="controller-grid">
         
@@ -181,17 +259,39 @@ export function ControllerApp() {
         <div className="control-column horizontal-controls">
           <button
             className={`control ${left ? 'active' : ''}`}
-            onPointerDown={() => setLeft(true)}
-            onPointerUp={() => setLeft(false)}
-            onPointerLeave={() => setLeft(false)}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              activePointersRef.current.get('left')!.add(e.pointerId)
+              setLeft(true)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              if (e.changedTouches.length > 0) {
+                for (const touch of Array.from(e.changedTouches)) {
+                  activePointersRef.current.get('left')!.add(touch.identifier)
+                }
+                setLeft(true)
+              }
+            }}
           >
             Gauche
           </button>
           <button
             className={`control ${right ? 'active' : ''}`}
-            onPointerDown={() => setRight(true)}
-            onPointerUp={() => setRight(false)}
-            onPointerLeave={() => setRight(false)}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              activePointersRef.current.get('right')!.add(e.pointerId)
+              setRight(true)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              if (e.changedTouches.length > 0) {
+                for (const touch of Array.from(e.changedTouches)) {
+                  activePointersRef.current.get('right')!.add(touch.identifier)
+                }
+                setRight(true)
+              }
+            }}
           >
             Droite
           </button>
@@ -200,17 +300,39 @@ export function ControllerApp() {
         <div className="control-column vertical-controls">
           <button
             className={`control jump ${jump ? 'active' : ''}`}
-            onPointerDown={() => setJump(true)}
-            onPointerUp={() => setJump(false)}
-            onPointerLeave={() => setJump(false)}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              activePointersRef.current.get('jump')!.add(e.pointerId)
+              setJump(true)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              if (e.changedTouches.length > 0) {
+                for (const touch of Array.from(e.changedTouches)) {
+                  activePointersRef.current.get('jump')!.add(touch.identifier)
+                }
+                setJump(true)
+              }
+            }}
           >
             Haut
           </button>
           <button
             className={`control down ${down ? 'active' : ''}`}
-            onPointerDown={() => setDown(true)}
-            onPointerUp={() => setDown(false)}
-            onPointerLeave={() => setDown(false)}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              activePointersRef.current.get('down')!.add(e.pointerId)
+              setDown(true)
+            }}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              if (e.changedTouches.length > 0) {
+                for (const touch of Array.from(e.changedTouches)) {
+                  activePointersRef.current.get('down')!.add(touch.identifier)
+                }
+                setDown(true)
+              }
+            }}
           >
             Bas
           </button>

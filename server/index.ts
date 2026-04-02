@@ -19,14 +19,19 @@ type StartGameMessage = {
     type: "start_game";
 };
 
+type StopGameMessage = {
+    type: "stop_game";
+};
+
 type InputMessage = {
     type: "input";
     left: boolean;
     right: boolean;
     jump: boolean;
+    down: boolean;
 };
 
-type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage;
+type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage | StopGameMessage;
 
 type Player = {
     id: string;
@@ -42,6 +47,7 @@ type Player = {
         left: boolean;
         right: boolean;
         jump: boolean;
+        down?: boolean;
     };
     // Zombie mode properties
     isTag: boolean;
@@ -217,6 +223,7 @@ function spawnPlayer(id: string, name: string): Player {
             left: false,
             right: false,
             jump: false,
+            down: false,
         },
         isTag: false,
         transformationStartTime: null,
@@ -292,6 +299,10 @@ function resetRoundIfNeeded() {
         player.vy = 0;
         player.onGround = true;
         player.jumpsLeft = MAX_JUMPS;
+        player.input.left = false;
+        player.input.right = false;
+        player.input.jump = false;
+        player.input.down = false;
         player.isTag = false;
         player.transformationStartTime = null;
         player.transformedFrom = null;
@@ -349,7 +360,7 @@ function updateGame(dt: number) {
         if (player.x < PLAYER_RADIUS) player.x = PLAYER_RADIUS;
         if (player.x > ARENA_WIDTH - PLAYER_RADIUS) player.x = ARENA_WIDTH - PLAYER_RADIUS;
 
-        // tile collision
+        // tile collision   
         const tile = getTileUnderPlayer(player);
         if (tile && tile.type !== 'passable') {
             const top = tile.y;
@@ -561,6 +572,7 @@ wss.on("connection", (ws: WebSocket) => {
                 player.input.left = false;
                 player.input.right = false;
                 player.input.jump = false;
+                player.input.down = false;
                 player.isTag = false;
                 player.transformationStartTime = null;
                 player.transformedFrom = null;
@@ -579,6 +591,34 @@ wss.on("connection", (ws: WebSocket) => {
             return;
         }
 
+        if (msg.type === "stop_game") {
+            if (meta.role !== "screen") {
+                return;
+            }
+
+            gameStarted = false;
+            roundStartTs = Date.now();
+            tagPlayerId = null;
+
+            players.forEach((player) => {
+                player.x = 120 + ((Math.random() * 600) | 0);
+                player.y = FLOOR_Y;
+                player.vx = 0;
+                player.vy = 0;
+                player.onGround = true;
+                player.jumpsLeft = MAX_JUMPS;
+                player.input.left = false;
+                player.input.right = false;
+                player.input.jump = false;
+                player.isTag = false;
+                player.transformationStartTime = null;
+                player.transformedFrom = null;
+            });
+
+            broadcastLobby();
+            return;
+        }
+
         if (msg.type === "input") {
             if (meta.role !== "controller" || !meta.playerId) {
                 return;
@@ -588,6 +628,7 @@ wss.on("connection", (ws: WebSocket) => {
             player.input.left = Boolean(msg.left);
             player.input.right = Boolean(msg.right);
             player.input.jump = Boolean(msg.jump);
+            player.input.down = Boolean(msg.down ?? false);
         }
     });
 
