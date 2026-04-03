@@ -308,6 +308,17 @@ button {
   text-align: center;
 }
 
+.fullscreen-button {
+  position: fixed;
+  top: 0.8rem;
+  right: 0.8rem;
+  z-index: 1000;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: #ffe39e;
+  color: #2c1d05;
+}
+
 .controller-portrait-warning {
   text-align: center;
   gap: 0.6rem;

@@ -6,6 +6,28 @@ import { disableControllerTextSelection, disableControllerZoom } from './disable
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
 
+async function requestFullscreenIfPossible(): Promise<boolean> {
+  const root = document.documentElement as HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void> | void
+  }
+
+  try {
+    if (document.fullscreenElement) return true
+    if (root.requestFullscreen) {
+      await root.requestFullscreen()
+      return true
+    }
+    if (root.webkitRequestFullscreen) {
+      await root.webkitRequestFullscreen()
+      return true
+    }
+  } catch {
+    return false
+  }
+
+  return false
+}
+
 export function ControllerApp() {
   const [status, setStatus] = useState('Deconnecte')
   const [nameInput, setNameInput] = useState('')
@@ -20,6 +42,7 @@ export function ControllerApp() {
   const [jump, setJump] = useState(false)
   const [down, setDown] = useState(false)
   const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement))
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerIdRef = useRef<string | null>(null)
@@ -31,15 +54,21 @@ export function ControllerApp() {
       setIsPortrait(event.matches)
     }
 
-    setIsPortrait(media.matches)
-
-    if (media.addEventListener) {
-      media.addEventListener('change', updateOrientation)
-      return () => media.removeEventListener('change', updateOrientation)
+    const updateFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
     }
 
-    media.addListener(updateOrientation)
-    return () => media.removeListener(updateOrientation)
+    setIsPortrait(media.matches)
+    updateFullscreen()
+
+    media.addEventListener('change', updateOrientation)
+
+    document.addEventListener('fullscreenchange', updateFullscreen)
+
+    return () => {
+      media.removeEventListener('change', updateOrientation)
+      document.removeEventListener('fullscreenchange', updateFullscreen)
+    }
   }, [])
 
   useEffect(() => {
@@ -62,6 +91,16 @@ export function ControllerApp() {
       // Certains navigateurs bloquent le verrouillage sans plein ecran.
     })
   }, [])
+
+  useEffect(() => {
+    if (isPortrait || isFullscreen) return
+
+    requestFullscreenIfPossible().then((ok) => {
+      if (ok) {
+        setIsFullscreen(true)
+      }
+    })
+  }, [isPortrait, isFullscreen])
 
   useEffect(() => {
     if (!name) return
@@ -269,6 +308,18 @@ export function ControllerApp() {
 
     return (
       <main className="controller-layout waiting controller-force-landscape">
+        {!isFullscreen && (
+          <button
+            className="fullscreen-button"
+            onClick={() => {
+              requestFullscreenIfPossible().then((ok) => {
+                if (ok) setIsFullscreen(true)
+              })
+            }}
+          >
+            Plein ecran
+          </button>
+        )}
         <h1>Salut {name}</h1>
         <p>Statut: {status}</p>
         <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
@@ -288,6 +339,18 @@ export function ControllerApp() {
 
   return (
     <main className="controller-layout controller-force-landscape">
+      {!isFullscreen && (
+        <button
+          className="fullscreen-button"
+          onClick={() => {
+            requestFullscreenIfPossible().then((ok) => {
+              if (ok) setIsFullscreen(true)
+            })
+          }}
+        >
+          Plein ecran
+        </button>
+      )}
       <div className="infosJoueur">
         <p>Joueur: {name}</p>
         <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
