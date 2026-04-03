@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { LobbyMessage, ServerMessage } from '../types/ws'
 import { disableControllerTextSelection, disableControllerZoom } from './disableTextSelection.js'
+import { ConnectionPage } from './ConnectionPage'
+import { PortraitWarningPage } from './PortraitWarningPage'
+import { WaitingLaunchPage } from './WaitingLaunchPage'
+import { GamepadPage } from './GamepadPage'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -273,177 +277,112 @@ export function ControllerApp() {
     setName(trimmed)
   }
 
+  function requestFullscreen() {
+    requestFullscreenIfPossible().then((ok) => {
+      if (ok) setIsFullscreen(true)
+    })
+  }
+
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
 
   if (!name) {
     return (
-      <main className={`controller-name-layout ${isPortrait ? 'controller-name-portrait' : ''}`}>
-        <section className={`controller-name-card ${isPortrait ? 'controller-name-portrait' : ''}`}>
-          <h1>Choisis ton pseudo</h1>
-          <p>Entre ton pseudo pour rejoindre la partie.</p>
-          <form onSubmit={submitName}>
-            <input
-              className="name-input"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Ton pseudo"
-              maxLength={16}
-            />
-            <button type="submit">Rejoindre</button>
-          </form>
-        </section>
-      </main>
+      <ConnectionPage
+        isPortrait={isPortrait}
+        nameInput={nameInput}
+        onNameInputChange={setNameInput}
+        onSubmitName={submitName}
+      />
     )
   }
 
   if (!lobby?.started) {
     if (isPortrait) {
-      return (
-        <main className="controller-layout controller-portrait-warning">
-          <h1>Veuillez tourner votre telephone</h1>
-          <p>Le controleur fonctionne en format paysage.</p>
-        </main>
-      )
+      return <PortraitWarningPage showFullscreenHint />
     }
 
     return (
-      <main className="controller-layout waiting controller-force-landscape">
-        {!isFullscreen && (
-          <button
-            className="fullscreen-button"
-            onClick={() => {
-              requestFullscreenIfPossible().then((ok) => {
-                if (ok) setIsFullscreen(true)
-              })
-            }}
-          >
-            Plein ecran
-          </button>
-        )}
-        <h1>Salut {name}</h1>
-        <p>Statut: {status}</p>
-        <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
-        <p className="log">En attente du lancement de partie sur l'ecran principal.</p>
-      </main>
+      <WaitingLaunchPage
+        name={name}
+        status={status}
+        playerLabel={playerLabel}
+        isFullscreen={isFullscreen}
+        onRequestFullscreen={requestFullscreen}
+      />
     )
   }
 
   if (isPortrait) {
-    return (
-      <main className="controller-layout controller-portrait-warning">
-        <h1>Veuillez tourner votre telephone</h1>
-        <p>Le controleur fonctionne en format paysage.</p>
-      </main>
-    )
+    return <PortraitWarningPage showFullscreenHint />
   }
 
   return (
-    <main className="controller-layout controller-force-landscape">
-      {!isFullscreen && (
-        <button
-          className="fullscreen-button"
-          onClick={() => {
-            requestFullscreenIfPossible().then((ok) => {
-              if (ok) setIsFullscreen(true)
-            })
-          }}
-        >
-          Plein ecran
-        </button>
-      )}
-      <div className="infosJoueur">
-        <p>Joueur: {name}</p>
-        <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
-        <p>
-          <span className={`player-tag-state ${playerTagState === 'TAG' ? 'tag' : 'free'}`}>Tu es {playerTagState}</span>
-        </p>
-      </div>
-
-      <div className="controller-grid">
-        
-
-        <div className="control-column horizontal-controls">
-          <button
-            className={`control ${left ? 'active' : ''}`}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              activePointersRef.current.get('left')!.add(e.pointerId)
-              setLeft(true)
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              if (e.changedTouches.length > 0) {
-                for (const touch of Array.from(e.changedTouches)) {
-                  activePointersRef.current.get('left')!.add(touch.identifier)
-                }
-                setLeft(true)
-              }
-            }}
-          >
-            Gauche
-          </button>
-          <button
-            className={`control ${right ? 'active' : ''}`}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              activePointersRef.current.get('right')!.add(e.pointerId)
-              setRight(true)
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              if (e.changedTouches.length > 0) {
-                for (const touch of Array.from(e.changedTouches)) {
-                  activePointersRef.current.get('right')!.add(touch.identifier)
-                }
-                setRight(true)
-              }
-            }}
-          >
-            Droite
-          </button>
-        </div>
-
-        <div className="control-column vertical-controls">
-          <button
-            className={`control jump ${jump ? 'active' : ''}`}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              activePointersRef.current.get('jump')!.add(e.pointerId)
-              setJump(true)
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              if (e.changedTouches.length > 0) {
-                for (const touch of Array.from(e.changedTouches)) {
-                  activePointersRef.current.get('jump')!.add(touch.identifier)
-                }
-                setJump(true)
-              }
-            }}
-          >
-            Haut
-          </button>
-          <button
-            className={`control down ${down ? 'active' : ''}`}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              activePointersRef.current.get('down')!.add(e.pointerId)
-              setDown(true)
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault()
-              if (e.changedTouches.length > 0) {
-                for (const touch of Array.from(e.changedTouches)) {
-                  activePointersRef.current.get('down')!.add(touch.identifier)
-                }
-                setDown(true)
-              }
-            }}
-          >
-            Bas
-          </button>
-        </div>
-      </div>
-    </main>
+    <GamepadPage
+      name={name}
+      playerLabel={playerLabel}
+      playerTagState={playerTagState}
+      isFullscreen={isFullscreen}
+      onRequestFullscreen={requestFullscreen}
+      left={left}
+      right={right}
+      jump={jump}
+      down={down}
+      onLeftPointerDown={(e) => {
+        e.preventDefault()
+        activePointersRef.current.get('left')!.add(e.pointerId)
+        setLeft(true)
+      }}
+      onLeftTouchStart={(e) => {
+        e.preventDefault()
+        if (e.changedTouches.length > 0) {
+          for (const touch of Array.from(e.changedTouches)) {
+            activePointersRef.current.get('left')!.add(touch.identifier)
+          }
+          setLeft(true)
+        }
+      }}
+      onRightPointerDown={(e) => {
+        e.preventDefault()
+        activePointersRef.current.get('right')!.add(e.pointerId)
+        setRight(true)
+      }}
+      onRightTouchStart={(e) => {
+        e.preventDefault()
+        if (e.changedTouches.length > 0) {
+          for (const touch of Array.from(e.changedTouches)) {
+            activePointersRef.current.get('right')!.add(touch.identifier)
+          }
+          setRight(true)
+        }
+      }}
+      onJumpPointerDown={(e) => {
+        e.preventDefault()
+        activePointersRef.current.get('jump')!.add(e.pointerId)
+        setJump(true)
+      }}
+      onJumpTouchStart={(e) => {
+        e.preventDefault()
+        if (e.changedTouches.length > 0) {
+          for (const touch of Array.from(e.changedTouches)) {
+            activePointersRef.current.get('jump')!.add(touch.identifier)
+          }
+          setJump(true)
+        }
+      }}
+      onDownPointerDown={(e) => {
+        e.preventDefault()
+        activePointersRef.current.get('down')!.add(e.pointerId)
+        setDown(true)
+      }}
+      onDownTouchStart={(e) => {
+        e.preventDefault()
+        if (e.changedTouches.length > 0) {
+          for (const touch of Array.from(e.changedTouches)) {
+            activePointersRef.current.get('down')!.add(touch.identifier)
+          }
+          setDown(true)
+        }
+      }}
+    />
   )
 }
