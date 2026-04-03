@@ -20,6 +20,7 @@ const MODE_LABEL: Record<GameMode, string> = {
 export function ScreenApp() {
   const [status, setStatus] = useState('Deconnecte')
   const [log, setLog] = useState('')
+  const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
   const [lobby, setLobby] = useState<LobbyMessage>({
     type: 'lobby',
     mode: 'classic',
@@ -34,6 +35,24 @@ export function ScreenApp() {
     () => `${window.location.origin}${window.location.pathname}?role=controller`,
     [],
   )
+
+  useEffect(() => {
+    const media = window.matchMedia('(orientation: portrait)')
+
+    const updateOrientation = (event: MediaQueryListEvent) => {
+      setIsPortrait(event.matches)
+    }
+
+    setIsPortrait(media.matches)
+
+    if (media.addEventListener) {
+      media.addEventListener('change', updateOrientation)
+      return () => media.removeEventListener('change', updateOrientation)
+    }
+
+    media.addListener(updateOrientation)
+    return () => media.removeListener(updateOrientation)
+  }, [])
 
   useEffect(() => {
     let closed = false
@@ -144,6 +163,15 @@ export function ScreenApp() {
     setLog('Retour a l accueil...')
   }
 
+  if (isPortrait) {
+    return (
+      <main className="screen-layout screen-portrait-warning">
+        <h1>Veuillez tourner votre telephone</h1>
+        <p>L'ecran principal fonctionne en format paysage.</p>
+      </main>
+    )
+  }
+
   if (!lobby.started) {
     return (
       <main className="screen-home">
@@ -156,7 +184,7 @@ export function ScreenApp() {
             )}`}
             alt="QR code pour rejoindre en tant que controleur"
           />
-          <p className="qr-hint">Les joueurs rejoignent uniquement via ce QR code ou via l'url ci dessous.</p>
+          <p className="qr-hint">Les joueurs rejoignent via ce QR code ou via l'url ci dessous.</p>
           <p className="small-url">{controllerUrl}</p>
 
           <div className="lobby-info-grid">

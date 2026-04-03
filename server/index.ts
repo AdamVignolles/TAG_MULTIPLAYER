@@ -86,24 +86,24 @@ function createSimpleMap() {
 
 }
 
-function getTileUnderPlayer(p: Player): Tile | null {
-    // check tiles whose top is <= player.y+radius and player.x within tile bounds
-    for (const t of tiles) {
-        const left = t.x;
-        const right = t.x + t.w;
-        const top = t.y;
-        const bottom = t.y + t.h;
-        const px = p.x;
-        const py = p.y + p.vy * 0; // current position
+function overlapsOnX(px: number, tile: Tile): boolean {
+    return px + PLAYER_RADIUS > tile.x && px - PLAYER_RADIUS < tile.x + tile.w;
+}
 
-        if (px + PLAYER_RADIUS > left && px - PLAYER_RADIUS < right) {
-            // consider landing if player's feet are at or below tile top and above tile bottom
-            if (p.y + PLAYER_RADIUS >= top && p.y - PLAYER_RADIUS <= bottom) {
-                return t;
-            }
-        }
+function overlapsOnY(py: number, tile: Tile): boolean {
+    return py + PLAYER_RADIUS > tile.y && py - PLAYER_RADIUS < tile.y + tile.h;
+}
+
+function applyTileEffects(player: Player, tile: Tile, mode: { jumpForce: number }) {
+    if (tile.type === 'jumpBoost') {
+        player.vy = -mode.jumpForce * 1.25;
     }
-    return null;
+    if (tile.type === 'speedUp') {
+        player.vx *= 1.1;
+    }
+    if (tile.type === 'speedDown') {
+        player.vx *= 0.9;
+    }
 }
 
 type ClientMeta = {
@@ -327,6 +327,8 @@ function updateGame(dt: number) {
     const mode = MODE_CONFIG[gameMode];
 
     players.forEach((player) => {
+        const prevY = player.y;
+
         // In zombie mode, immobilize during transformation
         if (gameMode === "zombie" && player.transformationStartTime) {
             player.vx = 0;
@@ -354,42 +356,97 @@ function updateGame(dt: number) {
         }
 
         player.vy += mode.gravity * dt;
+
+        // Resolve horizontal movement first to block side traversal on solid tiles.
         player.x += player.vx * dt;
+        for (const tile of tiles) {
+            if (tile.type === 'passable') {
+                continue;
+            }
+
+            if (!overlapsOnY(prevY, tile)) {
+                continue;
+            }
+
+            if (!overlapsOnX(player.x, tile)) {
+                continue;
+            }
+
+            if (player.vx > 0) {
+                player.x = tile.x - PLAYER_RADIUS;
+            } else if (player.vx < 0) {
+                player.x = tile.x + tile.w + PLAYER_RADIUS;
+            }
+            player.vx = 0;
+        }
+
+        // Resolve vertical movement with full collisions on solid tiles and one-way on passable tiles.
         player.y += player.vy * dt;
+        player.onGround = false;
+        let landedTile: Tile | null = null;
+
+        for (const tile of tiles) {
+            const tileTop = tile.y;
+            const tileBottom = tile.y + tile.h;
+            const prevTop = prevY - PLAYER_RADIUS;
+            const prevBottom = prevY + PLAYER_RADIUS;
+            const newTop = player.y - PLAYER_RADIUS;
+            const newBottom = player.y + PLAYER_RADIUS;
+
+            if (!overlapsOnX(player.x, tile)) {
+                continue;
+            }
+
+            if (tile.type === 'passable') {
+                // Pink tile: can always be crossed from below, can stand on top,
+                // and pressing down allows dropping through.
+                if (player.input.down) {
+                    continue;
+                }
+
+                if (player.vy >= 0 && prevBottom <= tileTop && newBottom > tileTop) {
+                    player.y = tileTop - PLAYER_RADIUS;
+                    player.vy = 0;
+                    player.onGround = true;
+                    player.jumpsLeft = MAX_JUMPS;
+                    landedTile = tile;
+                }
+                continue;
+            }
+
+            if (!overlapsOnY(player.y, tile)) {
+                continue;
+            }
+
+            if (player.vy >= 0 && prevBottom <= tileTop && newBottom > tileTop) {
+                player.y = tileTop - PLAYER_RADIUS;
+                player.vy = 0;
+                player.onGround = true;
+                player.jumpsLeft = MAX_JUMPS;
+                landedTile = tile;
+                continue;
+            }
+
+            if (player.vy < 0 && prevTop >= tileBottom && newTop < tileBottom) {
+                player.y = tileBottom + PLAYER_RADIUS;
+                player.vy = 0;
+            }
+        }
 
         if (player.x < PLAYER_RADIUS) player.x = PLAYER_RADIUS;
         if (player.x > ARENA_WIDTH - PLAYER_RADIUS) player.x = ARENA_WIDTH - PLAYER_RADIUS;
 
-        // tile collision   
-        const tile = getTileUnderPlayer(player);
-        if (tile && tile.type !== 'passable') {
-            const top = tile.y;
-            if (player.y + PLAYER_RADIUS > top && player.vy >= 0) {
-                player.y = top - PLAYER_RADIUS;
-                player.vy = 0;
-                player.onGround = true;
-                player.jumpsLeft = MAX_JUMPS;
+        // fall to floor
+        if (player.y >= FLOOR_Y) {
+            player.y = FLOOR_Y;
+            player.vy = 0;
+            player.onGround = true;
+            player.jumpsLeft = MAX_JUMPS;
+            landedTile = null;
+        }
 
-                // apply tile effects
-                if (tile.type === 'jumpBoost') {
-                    player.vy = -mode.jumpForce * 1.25;
-                }
-                if (tile.type === 'speedUp') {
-                    // temporarily increase speed while on tile
-                    player.vx *= 1.1;
-                }
-                if (tile.type === 'speedDown') {
-                    player.vx *= 0.9;
-                }
-            }
-        } else {
-            // fall to floor
-            if (player.y >= FLOOR_Y) {
-                player.y = FLOOR_Y;
-                player.vy = 0;
-                player.onGround = true;
-                player.jumpsLeft = MAX_JUMPS;
-            }
+        if (landedTile) {
+            applyTileEffects(player, landedTile, mode);
         }
     });
 

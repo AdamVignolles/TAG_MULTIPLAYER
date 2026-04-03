@@ -27,3 +27,36 @@ export function disableControllerTextSelection(target = document.body) {
     target.style.webkitTouchCallout = previousTouchCallout
   }
 }
+
+export function disableControllerZoom(target = document.body) {
+  if (!target) {
+    return () => {}
+  }
+
+  const previousTouchAction = target.style.touchAction
+  target.style.touchAction = 'none'
+
+  const preventDefault = (event) => {
+    event.preventDefault()
+  }
+
+  const preventCtrlZoom = (event) => {
+    if (event.ctrlKey) {
+      event.preventDefault()
+    }
+  }
+
+  // iOS Safari gesture events are needed to reliably block pinch zoom.
+  document.addEventListener('gesturestart', preventDefault)
+  document.addEventListener('gesturechange', preventDefault)
+  document.addEventListener('gestureend', preventDefault)
+  document.addEventListener('wheel', preventCtrlZoom, { passive: false })
+
+  return () => {
+    document.removeEventListener('gesturestart', preventDefault)
+    document.removeEventListener('gesturechange', preventDefault)
+    document.removeEventListener('gestureend', preventDefault)
+    document.removeEventListener('wheel', preventCtrlZoom)
+    target.style.touchAction = previousTouchAction
+  }
+}

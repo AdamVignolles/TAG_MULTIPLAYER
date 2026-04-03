@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { LobbyMessage, ServerMessage } from '../types/ws'
-import { disableControllerTextSelection } from './disableTextSelection.js'
+import { disableControllerTextSelection, disableControllerZoom } from './disableTextSelection.js'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -19,12 +19,37 @@ export function ControllerApp() {
   const [right, setRight] = useState(false)
   const [jump, setJump] = useState(false)
   const [down, setDown] = useState(false)
+  const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    return disableControllerTextSelection()
+    const media = window.matchMedia('(orientation: portrait)')
+
+    const updateOrientation = (event: MediaQueryListEvent) => {
+      setIsPortrait(event.matches)
+    }
+
+    setIsPortrait(media.matches)
+
+    if (media.addEventListener) {
+      media.addEventListener('change', updateOrientation)
+      return () => media.removeEventListener('change', updateOrientation)
+    }
+
+    media.addListener(updateOrientation)
+    return () => media.removeListener(updateOrientation)
+  }, [])
+
+  useEffect(() => {
+    const restoreSelection = disableControllerTextSelection()
+    const restoreZoom = disableControllerZoom()
+
+    return () => {
+      restoreZoom()
+      restoreSelection()
+    }
   }, [])
 
   useEffect(() => {
@@ -213,8 +238,8 @@ export function ControllerApp() {
 
   if (!name) {
     return (
-      <main className="controller-name-layout controller-force-landscape">
-        <section className="controller-name-card">
+      <main className={`controller-name-layout ${isPortrait ? 'controller-name-portrait' : ''}`}>
+        <section className={`controller-name-card ${isPortrait ? 'controller-name-portrait' : ''}`}>
           <h1>Choisis ton pseudo</h1>
           <p>Entre ton pseudo pour rejoindre la partie.</p>
           <form onSubmit={submitName}>
@@ -233,12 +258,30 @@ export function ControllerApp() {
   }
 
   if (!lobby?.started) {
+    if (isPortrait) {
+      return (
+        <main className="controller-layout controller-portrait-warning">
+          <h1>Veuillez tourner votre telephone</h1>
+          <p>Le controleur fonctionne en format paysage.</p>
+        </main>
+      )
+    }
+
     return (
       <main className="controller-layout waiting controller-force-landscape">
         <h1>Salut {name}</h1>
         <p>Statut: {status}</p>
         <p>ID joueur: <span className="player-label-text">{playerLabel}</span></p>
         <p className="log">En attente du lancement de partie sur l'ecran principal.</p>
+      </main>
+    )
+  }
+
+  if (isPortrait) {
+    return (
+      <main className="controller-layout controller-portrait-warning">
+        <h1>Veuillez tourner votre telephone</h1>
+        <p>Le controleur fonctionne en format paysage.</p>
       </main>
     )
   }
