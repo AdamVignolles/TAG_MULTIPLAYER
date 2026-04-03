@@ -94,15 +94,23 @@ function overlapsOnY(py: number, tile: Tile): boolean {
     return py + PLAYER_RADIUS > tile.y && py - PLAYER_RADIUS < tile.y + tile.h;
 }
 
+function getTileUnderPlayer(player: Player): Tile | null {
+    for (const tile of tiles) {
+        if (!overlapsOnX(player.x, tile)) {
+            continue;
+        }
+        // Check if player feet are touching tile top (onGround condition)
+        const tileTop = tile.y;
+        if (Math.abs((player.y + PLAYER_RADIUS) - tileTop) < 2) {
+            return tile;
+        }
+    }
+    return null;
+}
+
 function applyTileEffects(player: Player, tile: Tile, mode: { jumpForce: number }) {
     if (tile.type === 'jumpBoost') {
         player.vy = -mode.jumpForce * 1.25;
-    }
-    if (tile.type === 'speedUp') {
-        player.vx *= 1.1;
-    }
-    if (tile.type === 'speedDown') {
-        player.vx *= 0.9;
     }
 }
 
@@ -135,7 +143,7 @@ const MODE_CONFIG: Record<GameMode, {
         baseSpeed: 220,
         tagSpeedBonus: 18,
         gravity: 1100,
-        jumpForce: 460,
+        jumpForce: 480,
         baseRoundDurationMs: 180000,
     },
     zombie: {
@@ -342,6 +350,16 @@ function updateGame(dt: number) {
                 speed = player.id === tagPlayerId ? mode.baseSpeed + mode.tagSpeedBonus : mode.baseSpeed;
             }
             player.vx = horizontal * speed;
+
+            // Apply speed modifiers from tiles the player is currently standing on
+            if (player.onGround) {
+                const currentTile = getTileUnderPlayer(player);
+                if (currentTile?.type === 'speedUp') {
+                    player.vx *= 1.5;
+                } else if (currentTile?.type === 'speedDown') {
+                    player.vx *= 0.7;
+                }
+            }
         }
 
         if (!player.transformationStartTime || gameMode !== "zombie") {
