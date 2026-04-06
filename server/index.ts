@@ -1,5 +1,7 @@
 /// <reference path="./ws.d.ts" />
 import { WebSocketServer, WebSocket } from "ws";
+import { ARENA_HEIGHT, ARENA_WIDTH, FLOOR_Y, createSimpleMap } from "./BlocMap.ts";
+import type { Tile } from "./BlocMap.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
@@ -55,37 +57,6 @@ type Player = {
     transformedFrom: string | null;
 };
 
-type TileType = 'solid' | 'jumpBoost' | 'passable' | 'speedUp' | 'speedDown';
-
-type Tile = {
-    id: string;
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    type: TileType;
-};
-
-const TILE_SIZE = 64;
-
-const tiles: Tile[] = [];
-
-function createSimpleMap() {
-    tiles.length = 0;
-    // ground row
-    for (let i = 0; i < Math.floor(ARENA_WIDTH / TILE_SIZE); i++) {
-        tiles.push({ id: `g${i}`, x: i * TILE_SIZE, y: FLOOR_Y + PLAYER_RADIUS, w: TILE_SIZE, h: ARENA_HEIGHT - (FLOOR_Y + PLAYER_RADIUS), type: 'solid' });
-    }
-
-    // some platforms
-    tiles.push({ id: 't1', x: 120, y: FLOOR_Y - 120, w: 160, h: 16, type: 'solid' });
-    tiles.push({ id: 't2', x: 340, y: FLOOR_Y - 200, w: 160, h: 16, type: 'jumpBoost' });
-    tiles.push({ id: 't3', x: 580, y: FLOOR_Y - 140, w: 120, h: 16, type: 'passable' });
-    tiles.push({ id: 't4', x: 760, y: FLOOR_Y - 80, w: 80, h: 16, type: 'speedUp' });
-    tiles.push({ id: 't5', x: 40, y: FLOOR_Y - 80, w: 80, h: 16, type: 'speedDown' });
-
-}
-
 function overlapsOnX(px: number, tile: Tile): boolean {
     return px + PLAYER_RADIUS > tile.x && px - PLAYER_RADIUS < tile.x + tile.w;
 }
@@ -120,10 +91,8 @@ type ClientMeta = {
 };
 
 const TICK_MS = 33;
-const ARENA_WIDTH = 900;
-const ARENA_HEIGHT = 500;
 const PLAYER_RADIUS = 16;
-const FLOOR_Y = ARENA_HEIGHT - 50;
+const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
 const ZOMBIE_TRANSFORMATION_TIME_MS = 3000;
@@ -163,9 +132,6 @@ const MODE_CONFIG: Record<GameMode, {
         baseRoundDurationMs: 90000,
     },
 };
-
-// map depends on arena constants, create after they are defined
-createSimpleMap();
 
 const wss = new WebSocketServer({ port: 3001 });
 const clients = new Map<WebSocket, ClientMeta>();
@@ -221,7 +187,7 @@ function spawnPlayer(id: string, name: string): Player {
         id,
         name,
         x: 120 + ((players.size * 120) % 600),
-        y: FLOOR_Y,
+        y: FLOOR_Y - PLAYER_RADIUS,
         vx: 0,
         vy: 0,
         onGround: true,
@@ -455,8 +421,8 @@ function updateGame(dt: number) {
         if (player.x > ARENA_WIDTH - PLAYER_RADIUS) player.x = ARENA_WIDTH - PLAYER_RADIUS;
 
         // fall to floor
-        if (player.y >= FLOOR_Y) {
-            player.y = FLOOR_Y;
+        if (player.y >= FLOOR_Y - PLAYER_RADIUS) {
+            player.y = FLOOR_Y - PLAYER_RADIUS;
             player.vy = 0;
             player.onGround = true;
             player.jumpsLeft = MAX_JUMPS;

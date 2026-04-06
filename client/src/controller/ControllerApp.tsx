@@ -92,19 +92,8 @@ export function ControllerApp() {
     if (!orientation.lock) return
 
     orientation.lock('landscape').catch(() => {
-      // Certains navigateurs bloquent le verrouillage sans plein ecran.
     })
   }, [])
-
-  useEffect(() => {
-    if (isPortrait || isFullscreen) return
-
-    requestFullscreenIfPossible().then((ok) => {
-      if (ok) {
-        setIsFullscreen(true)
-      }
-    })
-  }, [isPortrait, isFullscreen])
 
   useEffect(() => {
     if (!name) return
