@@ -17,6 +17,7 @@ export type TileView = {
   w: number
   h: number
   type: string
+  className?: string
 }
 
 export type LobbyMessage = {

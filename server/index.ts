@@ -2,6 +2,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { ARENA_HEIGHT, ARENA_WIDTH, FLOOR_Y, createSimpleMap } from "./BlocMap.ts";
 import type { Tile } from "./BlocMap.ts";
+import { applyTileEffects } from "./EffectsBlocs.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
@@ -42,6 +43,7 @@ type Player = {
     y: number;
     vx: number;
     vy: number;
+    gravityMultiplier: number;
     onGround: boolean;
     jumpsLeft: number;
     jumpLatch: boolean;
@@ -77,12 +79,6 @@ function getTileUnderPlayer(player: Player): Tile | null {
         }
     }
     return null;
-}
-
-function applyTileEffects(player: Player, tile: Tile, mode: { jumpForce: number }) {
-    if (tile.type === 'jumpBoost') {
-        player.vy = -mode.jumpForce * 1.25;
-    }
 }
 
 type ClientMeta = {
@@ -190,6 +186,7 @@ function spawnPlayer(id: string, name: string): Player {
         y: FLOOR_Y - PLAYER_RADIUS,
         vx: 0,
         vy: 0,
+        gravityMultiplier: 1,
         onGround: true,
         jumpsLeft: MAX_JUMPS,
         jumpLatch: false,
@@ -320,10 +317,8 @@ function updateGame(dt: number) {
             // Apply speed modifiers from tiles the player is currently standing on
             if (player.onGround) {
                 const currentTile = getTileUnderPlayer(player);
-                if (currentTile?.type === 'speedUp') {
-                    player.vx *= 1.5;
-                } else if (currentTile?.type === 'speedDown') {
-                    player.vx *= 0.7;
+                if (currentTile) {
+                    applyTileEffects(player, currentTile, mode, 'ground');
                 }
             }
         }
@@ -339,7 +334,7 @@ function updateGame(dt: number) {
             }
         }
 
-        player.vy += mode.gravity * dt;
+        player.vy += mode.gravity * player.gravityMultiplier * dt;
 
         // Resolve horizontal movement first to block side traversal on solid tiles.
         player.x += player.vx * dt;
@@ -424,13 +419,14 @@ function updateGame(dt: number) {
         if (player.y >= FLOOR_Y - PLAYER_RADIUS) {
             player.y = FLOOR_Y - PLAYER_RADIUS;
             player.vy = 0;
+            player.gravityMultiplier = 1;
             player.onGround = true;
             player.jumpsLeft = MAX_JUMPS;
             landedTile = null;
         }
 
         if (landedTile) {
-            applyTileEffects(player, landedTile, mode);
+            applyTileEffects(player, landedTile, mode, 'landing');
         }
     });
 
@@ -509,7 +505,7 @@ function updateGame(dt: number) {
             radius: PLAYER_RADIUS,
             isTag: gameMode === "zombie" ? p.isTag : undefined,
             })),
-            tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type })),
+            tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
     });
 }
 
@@ -608,6 +604,7 @@ wss.on("connection", (ws: WebSocket) => {
                 player.y = FLOOR_Y;
                 player.vx = 0;
                 player.vy = 0;
+                player.gravityMultiplier = 1;
                 player.onGround = true;
                 player.jumpsLeft = MAX_JUMPS;
                 player.input.left = false;

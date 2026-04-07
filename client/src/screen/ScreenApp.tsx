@@ -251,16 +251,18 @@ export function ScreenApp() {
               ? '#111'
               : tile.type === 'jumpBoost'
                 ? '#2b6cff'
-                : tile.type === 'passable'
-                  ? '#ff7fbf'
-                  : tile.type === 'speedUp'
-                    ? '#ffd54f'
-                    : '#7bd389'
+                :tile.type === 'jumpDown'
+                ? '#6454ED'
+                  : tile.type === 'passable'
+                    ? '#ff7fbf'
+                    : tile.type === 'speedUp'
+                      ? '#ffd54f'
+                      : '#7bd389'
 
           return (
             <div
               key={tile.id}
-              className={`tile ${tile.type}`}
+              className={`tile ${tile.type} ${tile.className ?? ''}`}
               style={{
                 left: `${tile.x}px`,
                 top: `${tile.y}px`,
