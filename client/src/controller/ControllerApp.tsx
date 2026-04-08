@@ -272,6 +272,16 @@ export function ControllerApp() {
     })
   }
 
+  function handleChangePseudo() {
+    setNameInput(name ?? '')
+    setName(null)
+    setLobby(null)
+    setStatus('Deconnecte')
+    setPlayerId(null)
+    playerIdRef.current = null
+    setPlayerTagState('FREE')
+  }
+
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
 
   if (!name) {
@@ -297,6 +307,7 @@ export function ControllerApp() {
         playerLabel={playerLabel}
         isFullscreen={isFullscreen}
         onRequestFullscreen={requestFullscreen}
+        onChangePseudo={handleChangePseudo}
       />
     )
   }

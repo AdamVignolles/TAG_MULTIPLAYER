@@ -4,21 +4,29 @@ type WaitingLaunchPageProps = {
   playerLabel: string
   isFullscreen: boolean
   onRequestFullscreen: () => void
+  onChangePseudo: () => void
 }
 
 export function WaitingLaunchPage({
   name,
   status,
-  playerLabel,
+  playerLabel,    
   isFullscreen,
   onRequestFullscreen,
+  onChangePseudo,
 }: WaitingLaunchPageProps) {
   return (
     <main className="controller-layout waiting controller-force-landscape">
       {!isFullscreen && (
-        <button className="fullscreen-button" onClick={onRequestFullscreen}>
-          Plein ecran
-        </button>
+        <>
+          <button className="change-pseudo-button" onClick={onChangePseudo}>
+            Changer de pseudo
+          </button>
+          
+          <button className="fullscreen-button" onClick={onRequestFullscreen}>
+            Plein ecran
+          </button>
+        </>
       )}
       <h1>Salut {name}</h1>
       <p>Statut: {status}</p>

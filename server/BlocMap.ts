@@ -38,6 +38,7 @@ export function createSimpleMap(playerRadius: number): Tile[] {
     tiles.push({ id: 'p11', x: 94, y: FLOOR_Y - 540, w: 16, h: 111, type: 'solid' });
     tiles.push({ id: 'p12', x: 110, y: FLOOR_Y - 540, w: 150, h: 16, type: 'passable' });
     tiles.push({ id: 'p13', x: 110, y: FLOOR_Y - 445, w: 150, h: 16, type: 'solid' });
+    tiles.push({ id: 'p14', x: 300, y: FLOOR_Y - 540, w: 70, h: 16, type: 'jumpDown' });
 
     // Left bottom right side of the map
 
