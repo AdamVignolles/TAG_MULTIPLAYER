@@ -27,7 +27,7 @@ export function createSimpleMap(playerRadius: number): Tile[] {
     // Left bottom left side of the map
     tiles.push({ id: 'p1', x: 60, y: FLOOR_Y - 60, w: 150, h: 16, type: 'solid' });
     tiles.push({ id: 'p2', x: 0, y: FLOOR_Y - 230, w: 110, h: 16, type: 'jumpBoost' });
-    tiles.push({ id: 'p3', x: 130, y: FLOOR_Y - 120, w: 210, h: 16, type: 'speedUp' });
+    tiles.push({ id: 'p3', x: 130, y: FLOOR_Y - 150, w: 210, h: 16, type: 'speedUp' });
     tiles.push({ id: 'p4', x: 430, y: FLOOR_Y - 65, w: 16, h: 65, type: 'solid' });
     tiles.push({ id: 'p5', x: 446, y: FLOOR_Y - 65, w: 150, h: 16, type: 'passable' });
     tiles.push({ id: 'p6', x: 596, y: FLOOR_Y - 65, w: 16, h: 65, type: 'solid' });
@@ -38,7 +38,9 @@ export function createSimpleMap(playerRadius: number): Tile[] {
     tiles.push({ id: 'p11', x: 94, y: FLOOR_Y - 540, w: 16, h: 111, type: 'solid' });
     tiles.push({ id: 'p12', x: 110, y: FLOOR_Y - 540, w: 150, h: 16, type: 'passable' });
     tiles.push({ id: 'p13', x: 110, y: FLOOR_Y - 445, w: 150, h: 16, type: 'solid' });
-    tiles.push({ id: 'p14', x: 300, y: FLOOR_Y - 540, w: 70, h: 16, type: 'jumpDown' });
+    tiles.push({ id: 'p14', x: 260, y: FLOOR_Y - 540, w: 70, h: 16, type: 'jumpDown' });
+    tiles.push({ id: 'p15', x: 410, y: FLOOR_Y - 540, w: 70, h: 16, type: 'jumpDown' });
+    tiles.push({ id: 'p16', x: 560, y: FLOOR_Y - 540, w: 70, h: 16, type: 'jumpDown' });
 
     // Left bottom right side of the map
 
