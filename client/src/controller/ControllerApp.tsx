@@ -10,6 +10,33 @@ import { GamepadPage } from './GamepadPage'
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
 
+const CONTROLLER_NAME_STORAGE_KEY = 'tag.controller.name'
+const CONTROLLER_SESSION_STORAGE_KEY = 'tag.controller.sessionId'
+
+function readStoredValue(key: string) {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeStoredValue(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // Ignore storage failures and keep the controller usable.
+  }
+}
+
+function createControllerSessionId() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID()
+  }
+
+  return `controller-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 async function requestFullscreenIfPossible(): Promise<boolean> {
   const root = document.documentElement as HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void> | void
@@ -34,8 +61,8 @@ async function requestFullscreenIfPossible(): Promise<boolean> {
 
 export function ControllerApp() {
   const [status, setStatus] = useState('Deconnecte')
-  const [nameInput, setNameInput] = useState('')
-  const [name, setName] = useState<string | null>(null)
+  const [nameInput, setNameInput] = useState(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY) ?? '')
+  const [name, setName] = useState<string | null>(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY)?.trim() || null)
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE'>('FREE')
   const [, setLog] = useState('')
@@ -50,6 +77,11 @@ export function ControllerApp() {
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerIdRef = useRef<string | null>(null)
+  const controllerSessionIdRef = useRef(readStoredValue(CONTROLLER_SESSION_STORAGE_KEY) ?? createControllerSessionId())
+
+  useEffect(() => {
+    writeStoredValue(CONTROLLER_SESSION_STORAGE_KEY, controllerSessionIdRef.current)
+  }, [])
 
   useEffect(() => {
     const media = window.matchMedia('(orientation: portrait)')
@@ -177,7 +209,12 @@ export function ControllerApp() {
             setPlayerTagState('FREE')
           }
 
-          ws.send(JSON.stringify({ type: 'join', role: 'controller', name }))
+          ws.send(JSON.stringify({
+            type: 'join',
+            role: 'controller',
+            name,
+            sessionId: controllerSessionIdRef.current,
+          }))
           return
         } catch (error) {
           console.warn('WebSocket connect failed', url, error)
@@ -263,6 +300,8 @@ export function ControllerApp() {
     e.preventDefault()
     const trimmed = nameInput.trim()
     if (!trimmed) return
+    writeStoredValue(CONTROLLER_NAME_STORAGE_KEY, trimmed)
+    writeStoredValue(CONTROLLER_SESSION_STORAGE_KEY, controllerSessionIdRef.current)
     setName(trimmed)
   }
 

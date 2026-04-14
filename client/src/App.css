@@ -311,26 +311,69 @@ button {
   text-align: center;
 }
 
-.fullscreen-button {
+.top-buttons {
   position: fixed;
   top: 0.8rem;
   right: 0.8rem;
   z-index: 1000;
-  padding: 0.55rem 0.8rem;
-  border-radius: 10px;
-  background: #ffe39e;
-  color: #2c1d05;
+  display: flex;
+  gap: 0.5rem; /* espace entre les boutons */
+}
+
+.fullscreen-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: auto;
+  border: 1px solid #ffe39e;
+  background: linear-gradient(180deg, #000000 0%, #1c1d1c 100%);
+  color: #ffffff;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.28);
+  line-height: 1;
+  vertical-align: middle;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.15s ease;
 }
 
 .change-pseudo-button {
-  position: fixed;
-  top: 0.8rem;
-  left: 0.8rem;
-  z-index: 1000;
-  padding: 0.55rem 0.8rem;
-  border-radius: 10px;
-  background: #9efcff;
-  color: #2c1d05;
+  transform:scale(0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #ffe39e;
+  background: linear-gradient(180deg, #000000 0%, #1c1d1c 100%);
+  color: #ffffff;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.28);
+  line-height: 1;
+  vertical-align: middle;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.change-pseudo-button i {
+  font-size: 1rem;
+}
+
+.change-pseudo-button:hover {
+  filter: brightness(1.04);
+}
+
+.change-pseudo-button:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.3);
+}
+
+.change-pseudo-button:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .controller-portrait-warning {
@@ -349,8 +392,8 @@ button {
   gap: 50px;
 }
 
-.player-label-text {
-  color: #9df4ff;
+.player-label-text, .controller-layout.waiting h1{
+  color: #ffe39e;
   font-weight: 800;
   letter-spacing: 0.04em;
   -webkit-text-stroke: 5px #000;
@@ -395,6 +438,16 @@ button {
   .controller-name-card form {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .change-pseudo-button {
+    width: 2.8rem;
+    height: 2.8rem;
+    margin-left: 0.6rem;
+  }
+
+  .change-pseudo-button i {
+    font-size: 1.08rem;
   }
 }
 

@@ -11,6 +11,7 @@ type JoinMessage = {
     type: "join";
     role: Role;
     name?: string;
+    sessionId?: string;
 };
 
 type SetModeMessage = {
@@ -38,6 +39,7 @@ type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMess
 
 type Player = {
     id: string;
+    sessionId: string;
     name: string;
     x: number;
     y: number;
@@ -84,6 +86,7 @@ function getTileUnderPlayer(player: Player): Tile | null {
 type ClientMeta = {
     role?: Role;
     playerId?: string;
+    sessionId?: string;
 };
 
 const TICK_MS = 33;
@@ -132,6 +135,7 @@ const MODE_CONFIG: Record<GameMode, {
 const wss = new WebSocketServer({ port: 3001 });
 const clients = new Map<WebSocket, ClientMeta>();
 const players = new Map<string, Player>();
+const disconnectedPlayerTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 let playerCounter = 1;
 let tagPlayerId: string | null = null;
@@ -178,9 +182,10 @@ function broadcastLobby() {
     });
 }
 
-function spawnPlayer(id: string, name: string): Player {
+function spawnPlayer(id: string, name: string, sessionId: string): Player {
     return {
         id,
+        sessionId,
         name,
         x: 120 + ((players.size * 120) % 600),
         y: FLOOR_Y - PLAYER_RADIUS,
@@ -200,6 +205,45 @@ function spawnPlayer(id: string, name: string): Player {
         transformationStartTime: null,
         transformedFrom: null,
     };
+}
+
+function removePlayer(playerId: string) {
+    const timer = disconnectedPlayerTimers.get(playerId);
+    if (timer) {
+        clearTimeout(timer);
+        disconnectedPlayerTimers.delete(playerId);
+    }
+
+    if (!players.has(playerId)) {
+        return;
+    }
+
+    players.delete(playerId);
+
+    if (tagPlayerId === playerId) {
+        tagPlayerId = pickRandomPlayerId();
+        lastTagTs = Date.now();
+    }
+
+    if (players.size === 0) {
+        gameStarted = false;
+        roundStartTs = Date.now();
+        tagPlayerId = null;
+    }
+}
+
+function schedulePlayerRemoval(playerId: string) {
+    if (disconnectedPlayerTimers.has(playerId)) {
+        return;
+    }
+
+    const timer = setTimeout(() => {
+        disconnectedPlayerTimers.delete(playerId);
+        removePlayer(playerId);
+        broadcastLobby();
+    }, 15000);
+
+    disconnectedPlayerTimers.set(playerId, timer);
 }
 
 function pickRandomPlayerId(): string | null {
@@ -299,6 +343,8 @@ function updateGame(dt: number) {
 
     players.forEach((player) => {
         const prevY = player.y;
+        const wasOnGround = player.onGround;
+        let jumpedThisTick = false;
 
         // In zombie mode, immobilize during transformation
         if (gameMode === "zombie" && player.transformationStartTime) {
@@ -329,6 +375,7 @@ function updateGame(dt: number) {
                 player.onGround = false;
                 player.jumpsLeft -= 1;
                 player.jumpLatch = true;
+                jumpedThisTick = true;
             } else if (!player.input.jump) {
                 player.jumpLatch = false;
             }
@@ -423,6 +470,10 @@ function updateGame(dt: number) {
             player.onGround = true;
             player.jumpsLeft = MAX_JUMPS;
             landedTile = null;
+        }
+
+        if (wasOnGround && !player.onGround && !jumpedThisTick) {
+            player.jumpsLeft = Math.min(player.jumpsLeft, MAX_JUMPS - 1);
         }
 
         if (landedTile) {
@@ -532,24 +583,43 @@ wss.on("connection", (ws: WebSocket) => {
 
         if (msg.type === "join") {
             meta.role = msg.role;
+            meta.sessionId = msg.sessionId;
 
             if (msg.role === "controller") {
-                const id = `P${playerCounter++}`;
-                const name = msg.name?.trim() || id;
-                const player = spawnPlayer(id, name);
-                players.set(id, player);
-                meta.playerId = id;
+                const sessionId = msg.sessionId?.trim() || `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                const trimmedName = msg.name?.trim();
+                const existingPlayer = [...players.values()].find((player) => player.sessionId === sessionId);
 
-                if (!tagPlayerId) {
-                    tagPlayerId = id;
-                    lastTagTs = Date.now();
+                if (existingPlayer) {
+                    const timer = disconnectedPlayerTimers.get(existingPlayer.id);
+                    if (timer) {
+                        clearTimeout(timer);
+                        disconnectedPlayerTimers.delete(existingPlayer.id);
+                    }
+
+                    if (trimmedName) {
+                        existingPlayer.name = trimmedName;
+                    }
+
+                    meta.playerId = existingPlayer.id;
+                } else {
+                    const id = `P${playerCounter++}`;
+                    const name = trimmedName || id;
+                    const player = spawnPlayer(id, name, sessionId);
+                    players.set(id, player);
+                    meta.playerId = id;
+
+                    if (!tagPlayerId) {
+                        tagPlayerId = id;
+                        lastTagTs = Date.now();
+                    }
                 }
 
                 send(ws, {
                     type: "joined",
                     role: "controller",
-                    playerId: id,
-                    name,
+                    playerId: meta.playerId,
+                    name: meta.playerId ? players.get(meta.playerId)?.name : trimmedName,
                 });
             } else {
                 send(ws, { type: "joined", role: "screen" });
@@ -675,19 +745,15 @@ wss.on("connection", (ws: WebSocket) => {
         clients.delete(ws);
 
         if (meta?.playerId) {
-            const removedId = meta.playerId;
-            players.delete(removedId);
+            const player = players.get(meta.playerId);
 
-            if (tagPlayerId === removedId) {
-                tagPlayerId = pickRandomPlayerId();
-                lastTagTs = Date.now();
+            if (player) {
+                player.input.left = false;
+                player.input.right = false;
+                player.input.jump = false;
+                player.input.down = false;
+                schedulePlayerRemoval(meta.playerId);
             }
-        }
-
-        if (players.size === 0) {
-            gameStarted = false;
-            roundStartTs = Date.now();
-            tagPlayerId = null;
         }
 
         broadcastLobby();

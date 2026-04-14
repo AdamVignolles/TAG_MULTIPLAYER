@@ -42,9 +42,15 @@ export function GamepadPage({
   return (
     <main className="controller-layout controller-force-landscape">
       {!isFullscreen && (
-        <button className="fullscreen-button" onClick={onRequestFullscreen}>
-          Plein ecran
-        </button>
+        <button
+            className="fullscreen-button"
+            onClick={onRequestFullscreen}
+            aria-label="Passer en plein écran"
+            title="Passer en plein écran"
+            type="button"
+          >
+          <i className="fa-solid fa-expand"></i>
+          </button>
       )}
       <div className="infosJoueur">
         <p>Joueur: {name}</p>

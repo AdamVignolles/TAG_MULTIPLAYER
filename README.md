@@ -18,11 +18,13 @@ npm install
 ```
 
 ## Run Client
+A exécuter à la racine du projet
 ```bash
 npm run client
 ```
 
 ## Run Server
+A exécuter à la racine du projet
 ```bash
 npm run server
 ```
