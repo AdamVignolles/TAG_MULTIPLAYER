@@ -143,37 +143,98 @@ button {
 }
 
 /* ============================================================
-   TOP BAR / NAVIGATION
+   GAME HUD / NAVIGATION
 ============================================================ */
 
-.topbar {
+.game-screen {
+  justify-content: flex-start;
+  padding-top: 1.2rem;
+  padding-bottom: 1.2rem;
+  background:
+    linear-gradient(180deg, #8dd8ff 0%, #aee7ff 50%, #daf4ff 100%);
+}
+
+.game-hud {
   display: flex;
   width: 100%;
-  max-width: 980px;
-  gap: 0.8rem;
+  max-width: 1060px;
+  gap: 1rem;
+  align-items: center;
   justify-content: space-between;
-  font-size: 0.95rem;
-  background: #16342f;
-  border: 1px solid #3a675a;
-  border-radius: 10px;
-  padding: 0.8rem;
+  background: rgba(255, 249, 219, 0.94);
+  border: 2px solid #d98a2f;
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  box-shadow: 0 10px 0 #ae6323;
+}
+
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.hud-title {
+  display: block;
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6e2f10;
+}
+
+.hud-subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #9d5e30;
+}
+
+.hud-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(110px, 1fr));
+  gap: 0.65rem;
+}
+
+.hud-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 12px;
+  border: 2px solid #d9983c;
+  background: #fff7d4;
+}
+
+.hud-pill strong {
+  font-size: 0.96rem;
+  color: #5f2d0b;
+}
+
+.hud-pill-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #976229;
 }
 
 .home-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
+  width: 2.25rem;
+  height: 2.25rem;
   padding: 0;
-  border-radius: 0;
-  color: #f8f8f3;
+  border-radius: 50%;
+  border: 2px solid #8b2e18;
+  background: linear-gradient(180deg, #ff9f67 0%, #eb6d3a 100%);
+  color: #fffaf0;
   line-height: 1;
 }
 
 .home-button:hover {
-  background: transparent;
-  color: #ffc86d;
+  color: #fff3c4;
+  filter: brightness(1.08);
 }
 
 /* ============================================================
@@ -182,57 +243,384 @@ button {
 
 .arena {
   position: relative;
-  border: 2px solid #4d8c71;
-  border-radius: 12px;
+  border: 3px solid #2f69b5;
+  border-radius: 18px;
   background:
-    linear-gradient(#101814, #17251d),
-    repeating-linear-gradient(90deg, #1f3128 0, #1f3128 30px, #22392e 30px, #22392e 60px);
+    linear-gradient(180deg, #87d4ff 0%, #a7e3ff 58%, #d2f2ff 100%);
+  box-shadow:
+    0 12px 0 #234c84,
+    0 24px 30px rgba(24, 56, 105, 0.24);
   overflow: hidden;
+}
+
+.arena-gradient,
+.arena-grid,
+.arena-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.arena-gradient {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255, 255, 255, 0.95) 0 8%, transparent 9%),
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.95) 0 7%, transparent 8%),
+    radial-gradient(circle at 23% 22%, rgba(255, 255, 255, 0.95) 0 7%, transparent 8%),
+    radial-gradient(circle at 70% 18%, rgba(255, 255, 255, 0.92) 0 8%, transparent 9%),
+    radial-gradient(circle at 76% 20%, rgba(255, 255, 255, 0.92) 0 7%, transparent 8%),
+    radial-gradient(circle at 81% 18%, rgba(255, 255, 255, 0.92) 0 7%, transparent 8%);
+  animation: cloudDrift 26s linear infinite alternate;
+}
+
+.arena-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.22;
+}
+
+.arena-noise {
+  opacity: 0.14;
+  background-image:
+    radial-gradient(circle at 16% 30%, rgba(255, 255, 255, 0.22) 0 1px, transparent 2px),
+    radial-gradient(circle at 64% 36%, rgba(255, 255, 255, 0.18) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 24%, rgba(255, 255, 255, 0.2) 0 1px, transparent 2px);
+  background-size: 160px 160px;
+}
+
+.arena.mode-zombie {
+  border-color: #9a5d39;
+}
+
+.arena.mode-bomb {
+  border-color: #bd7930;
 }
 
 .tile {
   position: absolute;
-  box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.35);
-  opacity: 0.95;
+  z-index: 1;
+  border: 2px solid #6f3c1c;
+  background-color: var(--tile-base, #b86f34);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0 28%, transparent 28% 100%);
+  background-size: 100% 100%;
+  box-shadow:
+    inset 0 4px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -8px 0 rgba(0, 0, 0, 0.18);
+  opacity: 0.96;
 }
 
 .ground {
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .tile.passable {
-  opacity: 0.6;
+  opacity: 0.65;
+  border-color: #a04a70;
+  border-style: dashed;
+  background-image:
+    /* Soft glow highlights */
+    radial-gradient(circle at 24% 26%, rgba(255, 255, 255, 0.35) 0 8%, transparent 10%),
+    radial-gradient(circle at 70% 68%, rgba(255, 255, 255, 0.28) 0 6%, transparent 8%),
+    /* Crystal/magical shimmer */
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 200, 240, 0.3) 0 3px,
+      rgba(220, 150, 210, 0.2) 3px 6px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(200, 180, 230, 0.25) 0 3px,
+      rgba(240, 220, 255, 0.15) 3px 6px
+    ),
+    /* Pastel gradient with magical feel */
+    linear-gradient(180deg, rgba(255, 230, 250, 0.9) 0 28%, rgba(240, 200, 235, 0.85) 28% 100%);
+  background-size:
+    100% 100%,
+    100% 100%,
+    12px 12px,
+    12px 12px,
+    100% 100%;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -6px 0 rgba(160, 70, 110, 0.2);
 }
 
 .tile.jumpBoost {
-  border: 2px solid rgba(255, 255, 255, 0.06);
+  border-color: #2a4a9e;
+  background-color: #4a7fff !important;
+  background-image:
+    /* Moon surface craters */
+    radial-gradient(circle at 20% 30%, rgba(80, 150, 255, 0.6) 0%, rgba(100, 170, 255, 0.3) 2%, transparent 5%),
+    radial-gradient(circle at 70% 60%, rgba(70, 140, 255, 0.55) 0%, rgba(90, 160, 255, 0.25) 2%, transparent 4%),
+    radial-gradient(circle at 45% 75%, rgba(75, 145, 255, 0.5) 0%, rgba(95, 165, 255, 0.2) 2%, transparent 3.5%),
+    radial-gradient(circle at 15% 65%, rgba(60, 130, 255, 0.45) 0%, transparent 3%),
+    /* Moon rock texture */
+    repeating-linear-gradient(
+      15deg,
+      rgba(50, 120, 220, 0.35) 0px 2px,
+      rgba(80, 150, 255, 0.3) 2px 4px
+    ),
+    repeating-linear-gradient(
+      -20deg,
+      rgba(40, 110, 200, 0.3) 0px 2.5px,
+      transparent 2.5px 5px
+    ),
+    /* Fine dust/grain */
+    radial-gradient(circle at 25% 25%, rgba(120, 170, 255, 0.25) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 55% 45%, rgba(100, 150, 255, 0.2) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 80% 70%, rgba(110, 160, 255, 0.18) 0 1px, transparent 1.5px),
+    /* Base gradient with bright blue */
+    linear-gradient(180deg, #6da3ff 0%, #4a7fff 50%, #2a5fdf 100%);
+  background-size:
+    50px 50px,
+    65px 65px,
+    55px 55px,
+    70px 70px,
+    8px 8px,
+    10px 10px,
+    80px 80px,
+    90px 90px,
+    100px 100px,
+    100% 100%;
+  box-shadow:
+    inset 0 2px 0 rgba(200, 230, 255, 0.25),
+    inset 0 -4px 0 rgba(0, 30, 80, 0.25);
+}
+
+.tile.solid {
+  border-color: #5a3a2a;
+  background-color: #8b6b47 !important;
+  background-image:
+    /* Large dirt patches */
+    radial-gradient(ellipse 80px 60px at 15% 20%, rgba(0, 0, 0, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 90px 70px at 75% 65%, rgba(0, 0, 0, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 100px 80px at 50% 50%, rgba(139, 90, 43, 0.2) 0%, transparent 40%),
+    /* Dirt crumbles and texture */
+    repeating-linear-gradient(
+      45deg,
+      rgba(101, 67, 33, 0.3) 0px 2px,
+      rgba(139, 101, 65, 0.25) 2px 4px,
+      rgba(160, 120, 80, 0.2) 4px 6px
+    ),
+    repeating-linear-gradient(
+      -25deg,
+      rgba(76, 50, 25, 0.25) 0px 3px,
+      transparent 3px 6px
+    ),
+    /* Noise and pebbles */
+    radial-gradient(circle at 22% 38%, rgba(0, 0, 0, 0.3) 0 1px, transparent 2px),
+    radial-gradient(circle at 72% 56%, rgba(120, 80, 40, 0.3) 0 1px, transparent 2px),
+    radial-gradient(circle at 46% 72%, rgba(0, 0, 0, 0.25) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 30% 60%, rgba(160, 100, 50, 0.2) 0 2px, transparent 3px),
+    /* Base gradient */
+    linear-gradient(180deg, #9d7d5d 0%, #8b6b47 50%, #6d4e30 100%);
+  background-size: 
+    120px 90px,
+    130px 100px,
+    140px 110px,
+    8px 8px,
+    12px 12px,
+    80px 80px,
+    95px 95px,
+    70px 70px,
+    100px 100px,
+    100% 100%;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.25);
 }
 
 .tile.speedUp {
-  outline: 2px solid rgba(0, 0, 0, 0.06);
+  border-color: #d4a820;
+  background-color: #ffd700 !important;
+  background-image:
+    /* Golden shine highlights */
+    radial-gradient(ellipse 75px 55px at 20% 15%, rgba(255, 255, 150, 0.4) 0%, transparent 45%),
+    radial-gradient(ellipse 85px 60px at 75% 25%, rgba(255, 250, 180, 0.35) 0%, transparent 40%),
+    /* Sandy texture patterns */
+    repeating-linear-gradient(
+      35deg,
+      rgba(200, 160, 60, 0.35) 0px 2px,
+      rgba(230, 190, 80, 0.3) 2px 4px
+    ),
+    repeating-linear-gradient(
+      -50deg,
+      rgba(180, 140, 40, 0.3) 0px 2px,
+      transparent 2px 4px
+    ),
+    /* Sand dunes shadow patches */
+    radial-gradient(ellipse 100px 80px at 30% 60%, rgba(200, 150, 50, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse 110px 85px at 75% 45%, rgba(220, 170, 70, 0.2) 0%, transparent 45%),
+    /* Sand grain details */
+    radial-gradient(circle at 15% 40%, rgba(150, 120, 40, 0.2) 0 1px, transparent 2px),
+    radial-gradient(circle at 60% 70%, rgba(180, 150, 60, 0.25) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 85% 30%, rgba(140, 110, 30, 0.15) 0 1px, transparent 2px),
+    /* Base gradient yellow/gold bright */
+    linear-gradient(180deg, #ffeb99 0%, #ffd700 45%, #daa520 100%);
+  background-size:
+    90px 70px,
+    100px 80px,
+    8px 8px,
+    10px 10px,
+    120px 100px,
+    130px 110px,
+    75px 75px,
+    85px 85px,
+    95px 95px,
+    100% 100%;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 200, 0.25),
+    inset 0 -4px 0 rgba(100, 80, 0, 0.2);
+}
+
+.tile.jumpDown {
+  border-color: #5a3a5a;
+  background-color: #7b5a9e !important;
+  background-image:
+    /* Purple crystalline highlights */
+    radial-gradient(ellipse 75px 55px at 20% 15%, rgba(200, 150, 255, 0.3) 0%, transparent 45%),
+    radial-gradient(ellipse 85px 60px at 75% 25%, rgba(220, 180, 255, 0.25) 0%, transparent 40%),
+    /* Crystalline facet texture */
+    repeating-linear-gradient(
+      25deg,
+      rgba(100, 60, 150, 0.4) 0px 2px,
+      rgba(130, 90, 180, 0.3) 2px 4px
+    ),
+    repeating-linear-gradient(
+      -40deg,
+      rgba(80, 50, 130, 0.35) 0px 2px,
+      transparent 2px 4px
+    ),
+    /* Purple crystal shadows */
+    radial-gradient(ellipse 100px 80px at 30% 60%, rgba(60, 30, 100, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse 110px 85px at 75% 45%, rgba(80, 50, 130, 0.2) 0%, transparent 45%),
+    /* Crystal sparkle details */
+    radial-gradient(circle at 15% 40%, rgba(150, 100, 200, 0.2) 0 1px, transparent 2px),
+    radial-gradient(circle at 60% 70%, rgba(100, 60, 150, 0.25) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 85% 30%, rgba(180, 130, 220, 0.15) 0 1px, transparent 2px),
+    /* Base gradient purple/violet */
+    linear-gradient(180deg, #9b7ab5 0%, #7b5a9e 50%, #5a3a7e 100%);
+  background-size:
+    90px 70px,
+    100px 80px,
+    8px 8px,
+    10px 10px,
+    120px 100px,
+    130px 110px,
+    75px 75px,
+    85px 85px,
+    95px 95px,
+    100% 100%;
+  box-shadow:
+    inset 0 2px 0 rgba(200, 150, 255, 0.15),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.25);
 }
 
 .tile.speedDown {
-  filter: brightness(0.9);
+  border-color: #2a4a20;
+  background-color: #4d8f3d !important;
+  background-image:
+    /* Grass highlights */
+    radial-gradient(ellipse 75px 55px at 25% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 45%),
+    radial-gradient(ellipse 85px 60px at 75% 28%, rgba(255, 255, 255, 0.18) 0%, transparent 40%),
+    /* Dense grass vertical strokes */
+    repeating-linear-gradient(
+      80deg,
+      rgba(50, 90, 35, 0.45) 0px 1px,
+      rgba(80, 120, 55, 0.4) 1px 2px,
+      rgba(60, 100, 40, 0.42) 2px 3px
+    ),
+    repeating-linear-gradient(
+      100deg,
+      rgba(40, 75, 30, 0.38) 0px 2px,
+      transparent 2px 4px
+    ),
+    /* Dense grass patches */
+    radial-gradient(ellipse 105px 85px at 20% 70%, rgba(30, 60, 20, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse 115px 90px at 80% 50%, rgba(35, 70, 25, 0.25) 0%, transparent 45%),
+    /* Leaf sparkle details */
+    radial-gradient(circle at 12% 35%, rgba(0, 0, 0, 0.12) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 65% 65%, rgba(30, 60, 20, 0.2) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 90% 25%, rgba(0, 0, 0, 0.1) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 35% 50%, rgba(40, 75, 30, 0.15) 0 0.8px, transparent 1.3px),
+    /* Base gradient */
+    linear-gradient(180deg, #6db54f 0%, #4d8f3d 45%, #3a6a2d 100%);
+  background-size:
+    95px 75px,
+    105px 85px,
+    5px 5px,
+    9px 9px,
+    125px 105px,
+    135px 115px,
+    80px 80px,
+    90px 90px,
+    100px 100px,
+    110px 110px,
+    100% 100%;
+  filter: saturate(0.98) brightness(0.96);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.22);
 }
 
 .player {
   position: absolute;
+  z-index: 2;
   border-radius: 50%;
-  background: #61d9c8;
-  color: #0f2220;
+  background: #4b8df2;
+  color: #f3fdff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   user-select: none;
+  border: 2px solid #fdf8ec;
+  box-shadow:
+    0 2px 0 #1c4f9b,
+    0 6px 10px rgba(0, 0, 0, 0.26);
+  animation: playerPulse 1.9s ease-in-out infinite;
 }
 
 .player.tag {
-  background: #ff6f5c;
+  background: #ef5738;
   color: #2a0905;
-  box-shadow: 0 0 18px #ff6f5caa;
+  border-color: #ffe5d8;
+  box-shadow:
+    0 2px 0 #8f2614,
+    0 6px 10px rgba(0, 0, 0, 0.26);
+}
+
+.game-log {
+  width: min(1060px, 100%);
+  margin: 0;
+  padding: 0.72rem 1rem;
+  border-radius: 12px;
+  border: 2px solid #d98a2f;
+  background: rgba(255, 248, 224, 0.9);
+  color: #5f2f0e;
+  font-size: 0.94rem;
+}
+
+@keyframes cloudDrift {
+  from {
+    transform: translateX(-3%);
+  }
+  to {
+    transform: translateX(3%);
+  }
+}
+
+@keyframes playerPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
 }
 
 /* ============================================================
@@ -421,9 +809,14 @@ button {
 ============================================================ */
 
 @media (max-width: 960px) {
-  .topbar {
+  .game-hud {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hud-stats {
     flex-wrap: wrap;
-    justify-content: center;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 
   .arena {
@@ -433,6 +826,14 @@ button {
 }
 
 @media (max-width: 600px) {
+  .hud-left {
+    justify-content: center;
+  }
+
+  .hud-stats {
+    grid-template-columns: 1fr;
+  }
+
   .lobby-info-grid,
   .mode-actions,
   .controller-name-card form {

@@ -17,6 +17,15 @@ const MODE_LABEL: Record<GameMode, string> = {
   bomb: 'Bombe',
 }
 
+const TILE_COLORS: Record<string, string> = {
+  solid: '#b86f34',
+  jumpBoost: '#67be4f',
+  jumpDown: '#8f68c9',
+  passable: '#e2b66a',
+  speedUp: '#f3d159',
+  speedDown: '#d07a3d',
+}
+
 export function ScreenApp() {
   const [status, setStatus] = useState('Deconnecte')
   const [log, setLog] = useState('')
@@ -230,34 +239,48 @@ export function ScreenApp() {
 
   const arenaW = gameState?.arena.width ?? 900
   const arenaH = gameState?.arena.height ?? 500
+  const playerCount = gameState?.players.length ?? lobby.connectedPlayers
 
   return (
-    <main className="screen-layout">
-      <header className="topbar">
-        <button className="home-button" onClick={goHome} title="Retour a l accueil" aria-label="Retour a l accueil">
-          <i className="fas fa-home" aria-hidden="true" />
-        </button>
-        <strong>Ecran principal</strong>
-        <span>{status}</span>
-        <span>Mode: {MODE_LABEL[lobby.mode]}</span>
-        <span>Temps: {formatTime(gameState?.remainingMs ?? 0)}</span>
-        <span>Joueurs: {gameState?.players.length ?? lobby.connectedPlayers}</span>
+    <main className="screen-layout game-screen">
+      <header className="game-hud">
+        <div className="hud-left">
+          <button className="home-button" onClick={goHome} title="Retour a l accueil" aria-label="Retour a l accueil">
+            <i className="fas fa-home" aria-hidden="true" />
+          </button>
+          <div>
+            <strong className="hud-title">Tag Arena</strong>
+            <p className="hud-subtitle">Partie en direct</p>
+          </div>
+        </div>
+
+        <div className="hud-stats">
+          <div className="hud-pill">
+            <span className="hud-pill-label">Statut</span>
+            <strong>{status}</strong>
+          </div>
+          <div className="hud-pill">
+            <span className="hud-pill-label">Mode</span>
+            <strong>{MODE_LABEL[lobby.mode]}</strong>
+          </div>
+          <div className="hud-pill">
+            <span className="hud-pill-label">Temps</span>
+            <strong>{formatTime(gameState?.remainingMs ?? 0)}</strong>
+          </div>
+          <div className="hud-pill">
+            <span className="hud-pill-label">Joueurs</span>
+            <strong>{playerCount}</strong>
+          </div>
+        </div>
       </header>
 
-      <section className="arena" style={{ width: `${arenaW}px`, height: `${arenaH}px` }}>
+      <section className={`arena mode-${lobby.mode}`} style={{ width: `${arenaW}px`, height: `${arenaH}px` }}>
+        <div className="arena-gradient" aria-hidden="true" />
+        <div className="arena-grid" aria-hidden="true" />
+        <div className="arena-noise" aria-hidden="true" />
+
         {(gameState?.tiles ?? []).map((tile) => {
-          const color =
-            tile.type === 'solid'
-              ? '#111'
-              : tile.type === 'jumpBoost'
-                ? '#2b6cff'
-                :tile.type === 'jumpDown'
-                ? '#6454ED'
-                  : tile.type === 'passable'
-                    ? '#ff7fbf'
-                    : tile.type === 'speedUp'
-                      ? '#ffd54f'
-                      : '#7bd389'
+          const color = TILE_COLORS[tile.type] ?? '#7bd389'
 
           return (
             <div
@@ -268,7 +291,8 @@ export function ScreenApp() {
                 top: `${tile.y}px`,
                 width: `${tile.w}px`,
                 height: `${tile.h}px`,
-                background: color,
+                backgroundColor: color,
+                ['--tile-base' as string]: color,
               }}
             />
           )
@@ -296,7 +320,7 @@ export function ScreenApp() {
         })}
       </section>
 
-      <footer className="log">{log || 'Partie en cours.'}</footer>
+      <footer className="log game-log">{log || 'Partie en cours.'}</footer>
     </main>
   )
 }
