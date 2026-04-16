@@ -1,10 +1,12 @@
 import type { PointerEvent, TouchEvent } from 'react'
+import { getReadableBackground, getFrenchColor } from './colorUtils'
 
 type GamepadPageProps = {
   name: string
   playerLabel: string
   playerTagState: 'TAG' | 'FREE'
   isFullscreen: boolean
+  playerColor: string | null
   onRequestFullscreen: () => void
   left: boolean
   right: boolean
@@ -24,6 +26,7 @@ export function GamepadPage({
   name,
   playerLabel,
   playerTagState,
+  playerColor,
   isFullscreen,
   onRequestFullscreen,
   left,
@@ -62,6 +65,13 @@ export function GamepadPage({
             Tu es {playerTagState}
           </span>
         </p>
+        {playerColor && <p><span style={{ color: playerColor,
+        backgroundColor: getReadableBackground(playerColor),
+        padding: "4px 10px",
+        borderRadius: "8px",
+        boxShadow: `0 4px 12px ${playerColor}80`,
+        border: `1px solid ${playerColor}`,
+        display: "inline-block"}}>Perso {getFrenchColor(playerColor)}</span></p>}
       </div>
 
       <div className="controller-grid">

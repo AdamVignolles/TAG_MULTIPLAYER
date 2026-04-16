@@ -1,8 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { GameMode, LobbyMessage, ServerMessage, StateMessage } from '../types/ws'
+import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView } from '../types/ws'
+import { getSpriteUrl, SPRITE_DIMENSIONS } from '../utils/characterManager'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
+
+function getAnimationFrame(player: PlayerView): number {
+  // Determine which sprite row (0-5) to display based on movement state
+  // 0: static, 1: left, 2: right, 3: jump static, 4: jump left, 5: jump right
+  
+  const isJumping = player.vy !== undefined && player.vy !== 0
+  const isMovingLeft = player.vx !== undefined && player.vx < -10
+  const isMovingRight = player.vx !== undefined && player.vx > 10
+
+  if (isJumping) {
+    if (isMovingLeft) return 4  // jump left
+    if (isMovingRight) return 5  // jump right
+    return 3  // jump static
+  }
+
+  if (isMovingLeft) return 1  // walk left
+  if (isMovingRight) return 2  // walk right
+  
+  return 0  // static
+}
 
 function formatTime(ms: number) {
   const sec = Math.ceil(ms / 1000)
@@ -250,7 +271,7 @@ export function ScreenApp() {
           </button>
           <div>
             <strong className="hud-title">Tag Arena</strong>
-            <p className="hud-subtitle">Partie en direct</p>
+            <p className="hud-subtitle">Partie en cours</p>
           </div>
         </div>
 
@@ -300,21 +321,33 @@ export function ScreenApp() {
 
         {(gameState?.players ?? []).map((player) => {
           const isTag = gameState?.mode === 'zombie' ? player.isTag : gameState?.tagPlayerId === player.id
+          const spriteSize = 32
+          const frameIndex = getAnimationFrame(player)
+          const backgroundYOffset = frameIndex * spriteSize
+          const playerLabel = (player.name ?? '').slice(0, 2).toUpperCase() || player.id || '--'
 
           return (
-            <div
-              key={player.id}
-              className={`player ${isTag ? 'tag' : ''}`}
-              style={{
-                left: `${player.x - player.radius}px`,
-                top: `${player.y - player.radius}px`,
-                width: `${player.radius * 2}px`,
-                height: `${player.radius * 2}px`,
-                background: isTag ? '#ff0000' : '#0066ff',
-              }}
-              title={player.name}
-            >
-              {player.name.slice(0, 2).toUpperCase()}
+            <div key={player.id} style={{ position: 'absolute', left: `${player.x}px`, top: `${player.y}px`, transform: 'translate(-50%, -50%)', width: 0, height: 0 }}>
+              <div
+                className={`player ${isTag ? 'tag' : ''}`}
+                style={{
+                  position: 'absolute',
+                  left: `${-spriteSize / 2}px`,
+                  top: `${-spriteSize / 2}px`,
+                  width: `${spriteSize}px`,
+                  height: `${spriteSize}px`,
+                  backgroundImage: player.character ? `url(${getSpriteUrl(player.character)})` : undefined,
+                  backgroundPosition: `0 ${-backgroundYOffset}px`,
+                  backgroundSize: `${spriteSize}px ${6 * spriteSize}px`,
+                  backgroundRepeat: 'no-repeat',
+                  imageRendering: 'pixelated' as any,
+                }}
+                title={player.name}
+              >
+                <div className="player-label">
+                  {playerLabel}
+                </div>
+              </div>
             </div>
           )
         })}

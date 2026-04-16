@@ -6,6 +6,7 @@ import { applyTileEffects } from "./EffectsBlocs.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
+type CharacterType = "blue" | "yellow" | "green" | "purple" | "red";
 
 type JoinMessage = {
     type: "join";
@@ -27,6 +28,11 @@ type StopGameMessage = {
     type: "stop_game";
 };
 
+type SetCharacterMessage = {
+    type: "set_character";
+    character: CharacterType;
+};
+
 type InputMessage = {
     type: "input";
     left: boolean;
@@ -35,12 +41,13 @@ type InputMessage = {
     down: boolean;
 };
 
-type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage | StopGameMessage;
+type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage | StopGameMessage | SetCharacterMessage;
 
 type Player = {
     id: string;
     sessionId: string;
     name: string;
+    character: CharacterType;
     x: number;
     y: number;
     vx: number;
@@ -132,6 +139,12 @@ const MODE_CONFIG: Record<GameMode, {
     },
 };
 
+const CHARACTERS: CharacterType[] = ["blue", "yellow", "green", "purple", "red"];
+
+function getRandomCharacter(): CharacterType {
+    return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+}
+
 const wss = new WebSocketServer({ port: 3001 });
 const clients = new Map<WebSocket, ClientMeta>();
 const players = new Map<string, Player>();
@@ -187,6 +200,7 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
         id,
         sessionId,
         name,
+        character: getRandomCharacter(),
         x: 120 + ((players.size * 120) % 600),
         y: FLOOR_Y - PLAYER_RADIUS,
         vx: 0,
@@ -551,8 +565,12 @@ function updateGame(dt: number) {
             players: [...players.values()].map((p) => ({
             id: p.id,
             name: p.name,
+            character: p.character,
             x: p.x,
             y: p.y,
+            vx: p.vx,
+            vy: p.vy,
+            onGround: p.onGround,
             radius: PLAYER_RADIUS,
             isTag: gameMode === "zombie" ? p.isTag : undefined,
             })),
@@ -724,6 +742,16 @@ wss.on("connection", (ws: WebSocket) => {
             });
 
             broadcastLobby();
+            return;
+        }
+
+        if (msg.type === "set_character") {
+            if (meta.role !== "controller" || !meta.playerId) {
+                return;
+            }
+            const player = players.get(meta.playerId);
+            if (!player) return;
+            player.character = msg.character;
             return;
         }
 

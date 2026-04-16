@@ -57,6 +57,9 @@ export function createSimpleMap(playerRadius: number): Tile[] {
     tiles.push({ id: 'tplf14', x: 50, y: FLOOR_Y - 753, w: 18, h: 16, type: 'solid' });
     tiles.push({ id: 'tplf15', x: 50, y: FLOOR_Y - 702, w: 18, h: 16, type: 'solid' });
     tiles.push({ id: 'tplf16', x: 68, y: FLOOR_Y - 753, w: 16, h: 67, type: 'solid' });
+    tiles.push({ id: 'tplf17', x: 336, y: FLOOR_Y - 820, w: 100, h:16, type: 'speedDown'})
+    tiles.push({ id: 'tplf18', x: 630, y: FLOOR_Y - 585, w: 70, h: 61, type: 'jumpDown' });
+    tiles.push({ id: 'tplf19', x: 700, y: FLOOR_Y - 646, w: 70, h: 61, type: 'jumpDown' });
 
 
     

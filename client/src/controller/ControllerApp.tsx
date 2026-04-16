@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { LobbyMessage, ServerMessage } from '../types/ws'
+import { getRandomCharacter } from '../utils/colorHelper'
 import { disableControllerTextSelection, disableControllerZoom } from './disableTextSelection.js'
 import { ConnectionPage } from './ConnectionPage'
 import { PortraitWarningPage } from './PortraitWarningPage'
@@ -65,6 +66,7 @@ export function ControllerApp() {
   const [name, setName] = useState<string | null>(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY)?.trim() || null)
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE'>('FREE')
+  const [playerColor, setPlayerColor] = useState<string | null>(null)
   const [, setLog] = useState('')
   const [lobby, setLobby] = useState<LobbyMessage | null>(null)
 
@@ -78,6 +80,7 @@ export function ControllerApp() {
   const wsRef = useRef<WebSocket | null>(null)
   const playerIdRef = useRef<string | null>(null)
   const controllerSessionIdRef = useRef(readStoredValue(CONTROLLER_SESSION_STORAGE_KEY) ?? createControllerSessionId())
+  const sentColorForPlayerIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     writeStoredValue(CONTROLLER_SESSION_STORAGE_KEY, controllerSessionIdRef.current)
@@ -181,6 +184,7 @@ export function ControllerApp() {
 
                 const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : data.tagPlayerId === me.id
                 setPlayerTagState(isTag ? 'TAG' : 'FREE')
+                setPlayerColor(me.character ?? null)
                 return
               }
 
@@ -207,6 +211,7 @@ export function ControllerApp() {
             wsRef.current = null
             playerIdRef.current = null
             setPlayerTagState('FREE')
+             setPlayerColor(null)
           }
 
           ws.send(JSON.stringify({
@@ -296,6 +301,20 @@ export function ControllerApp() {
     wsRef.current.send(JSON.stringify({ type: 'input', left, right, jump, down }))
   }, [left, right, jump, down])
 
+  useEffect(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    if (!playerId) return
+    if (lobby?.started) return
+
+    // Envoyer couleur aléatoire si on n'l'a pas déjà fait pour ce playerId
+    if (sentColorForPlayerIdRef.current !== playerId) {
+      const randomColor = getRandomCharacter()
+      wsRef.current.send(JSON.stringify({ type: 'set_character', character: randomColor }))
+      setPlayerColor(randomColor)
+      sentColorForPlayerIdRef.current = playerId
+    }
+  }, [playerId, lobby?.started])
+
   function submitName(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const trimmed = nameInput.trim()
@@ -319,6 +338,8 @@ export function ControllerApp() {
     setPlayerId(null)
     playerIdRef.current = null
     setPlayerTagState('FREE')
+    setPlayerColor(null)
+    sentColorForPlayerIdRef.current = null
   }
 
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
@@ -344,6 +365,7 @@ export function ControllerApp() {
         name={name}
         status={status}
         playerLabel={playerLabel}
+        playerColor={playerColor}
         isFullscreen={isFullscreen}
         onRequestFullscreen={requestFullscreen}
         onChangePseudo={handleChangePseudo}
@@ -361,6 +383,7 @@ export function ControllerApp() {
       playerLabel={playerLabel}
       playerTagState={playerTagState}
       isFullscreen={isFullscreen}
+      playerColor={playerColor}
       onRequestFullscreen={requestFullscreen}
       left={left}
       right={right}

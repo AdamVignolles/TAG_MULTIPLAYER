@@ -1,7 +1,10 @@
+import { getReadableBackground, getFrenchColor } from './colorUtils'
+
 type WaitingLaunchPageProps = {
   name: string
   status: string
   playerLabel: string
+  playerColor: string | null
   isFullscreen: boolean
   onRequestFullscreen: () => void
   onChangePseudo: () => void
@@ -10,7 +13,8 @@ type WaitingLaunchPageProps = {
 export function WaitingLaunchPage({
   name,
   status,
-  playerLabel,    
+  playerLabel,
+  playerColor,
   isFullscreen,
   onRequestFullscreen,
   onChangePseudo,
@@ -47,6 +51,7 @@ export function WaitingLaunchPage({
       <p>
         ID joueur: <span className="player-label-text">{playerLabel}</span>
       </p>
+      {playerColor && <p><span style={{ color: playerColor, backgroundColor: getReadableBackground(playerColor), padding: "4px 10px", borderRadius: "8px", boxShadow: `0 4px 12px ${playerColor}80`, border: `1px solid ${playerColor}`, display: "inline-block" }}>Perso {getFrenchColor(playerColor)}</span></p>}
       <p className="log">En attente du lancement de partie sur l'ecran principal.</p>
     </main>
   )

@@ -1,12 +1,18 @@
 export type Role = 'screen' | 'controller'
 export type GameMode = 'classic' | 'zombie' | 'bomb'
 
+export type CharacterType = 'blue' | 'yellow' | 'green' | 'purple' | 'red'
+
 export type PlayerView = {
   id: string
   name: string
   x: number
   y: number
   radius: number
+  character?: CharacterType
+  vx?: number
+  vy?: number
+  onGround?: boolean
   isTag?: boolean
 }
 
