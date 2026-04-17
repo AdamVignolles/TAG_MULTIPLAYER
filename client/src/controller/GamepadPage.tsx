@@ -84,7 +84,7 @@ export function GamepadPage({
     }
   }
   return (
-    <main className="controller-layout controller-force-landscape" ref={containerRef} onTouchStart={handleProximityTouchStart}>
+    <main className="controller-layout gamepad" ref={containerRef} onTouchStart={handleProximityTouchStart}>
 
       <div className="top-buttons">
         <div className="top-buttons-player">

@@ -39,12 +39,39 @@ const MODE_LABEL: Record<GameMode, string> = {
 }
 
 const TILE_COLORS: Record<string, string> = {
-  solid: '#b86f34',
-  jumpBoost: '#67be4f',
-  jumpDown: '#8f68c9',
-  passable: '#e2b66a',
-  speedUp: '#f3d159',
-  speedDown: '#d07a3d',
+  solid: '#8b6b47',
+  jumpBoost: '#4a7fff',
+  jumpDown: '#7b5a9e',
+  passable: '#a04a70',
+  speedUp: '#ffd700 ',
+  speedDown: '#4d8f3d ',
+}
+
+const TILE_DESCRIPTIONS: Record<string, { name: string; description: string }> = {
+  solid: {
+    name: 'Solide',
+    description: 'Un bloc de base solide. Vous pouvez sauter dessus.',
+  },
+  jumpBoost: {
+    name: 'Rebond (+)',
+    description: 'Augmente votre hauteur de saut et votre force.',
+  },
+  jumpDown: {
+    name: 'Rebond (-)',
+    description: 'Réduit votre hauteur de saut et votre force.',
+  },
+  passable: {
+    name: 'Passable',
+    description: 'Un bloc transparent. Vous pouvez passer monter dessus ou passer à travers avec les boutons de saut.',
+  },
+  speedUp: {
+    name: 'Vitesse (+)',
+    description: 'Augmente votre vitesse de déplacement.',
+  },
+  speedDown: {
+    name: 'Vitesse (-)',
+    description: 'Réduit votre vitesse de déplacement.',
+  },
 }
 
 export function ScreenApp() {
@@ -205,55 +232,83 @@ export function ScreenApp() {
   if (!lobby.started) {
     return (
       <main className="screen-home">
-        <section className="screen-home-card">
-          <h1>Scannez pour rejoindre</h1>
-          <img
-            className="qr-code"
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
-              controllerUrl,
-            )}`}
-            alt="QR code pour rejoindre en tant que controleur"
-          />
-          <p className="qr-hint">Les joueurs rejoignent via ce QR code ou via l'url ci dessous.</p>
-          <p className="small-url">{controllerUrl}</p>
-
-          <div className="lobby-info-grid">
-            <div>
-              <span className="label">Joueurs connectes</span>
-              <strong>{lobby.connectedPlayers}</strong>
-            </div>
-            <div>
-              <span className="label">Mode choisi</span>
-              <strong>{MODE_LABEL[lobby.mode]}</strong>
-            </div>
+        <div className="screen-home-layout">
+          {/* Colonne gauche: Blocs */}
+          <div className="screen-home-card">
+            <section className="screen-home-blocks-section">
+              <h1>Blocs du jeu</h1>
+              <div className="blocks-grid">
+                {Object.entries(TILE_DESCRIPTIONS).map(([type, info]) => (
+                  <div key={type} className="block-card">
+                    <div
+                      className="block-sample"
+                      style={{ backgroundColor: TILE_COLORS[type] }}
+                      aria-hidden="true"
+                    />
+                    <div className="block-info">
+                      <h3>{info.name}</h3>
+                      <p>{info.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
-          <div className="mode-actions">
-            <button
-              className={lobby.mode === 'classic' ? 'active' : ''}
-              onClick={() => sendMode('classic')}
-            >
-              Classique
-            </button>
-            <button
-              className={lobby.mode === 'zombie' ? 'active' : ''}
-              onClick={() => sendMode('zombie')}
-            >
-              Zombie
-            </button>
-            <button
-              className={lobby.mode === 'bomb' ? 'active' : ''}
-              onClick={() => sendMode('bomb')}
-            >
-              Bombe
-            </button>
-          </div>
+          {/* Colonne centre: QR + Mode */}
+          <section className="screen-home-card">
+            <h1>Scannez pour rejoindre</h1>
+            <img
+              className="qr-code"
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
+                controllerUrl,
+              )}`}
+              alt="QR code pour rejoindre en tant que controleur"
+            />
+            <p className="qr-hint">Les joueurs rejoignent via ce QR code ou via l'url ci dessous.</p>
+            <p className="small-url">{controllerUrl}</p>
 
-          <button className="launch-button" onClick={startGame}>
-            Lancer la partie
-          </button>
-          <p className="status">Statut: {status}</p>
-        </section>
+            <div className="lobby-info-grid">
+              <div>
+                <span className="label">Joueurs connectes</span>
+                <strong>{lobby.connectedPlayers}</strong>
+              </div>
+              <div>
+                <span className="label">Mode choisi</span>
+                <strong>{MODE_LABEL[lobby.mode]}</strong>
+              </div>
+            </div>
+
+            <div className="mode-actions">
+              <button
+                className={lobby.mode === 'classic' ? 'active' : ''}
+                onClick={() => sendMode('classic')}
+              >
+                Classique
+              </button>
+              <button
+                className={lobby.mode === 'zombie' ? 'active' : ''}
+                onClick={() => sendMode('zombie')}
+              >
+                Zombie
+              </button>
+              <button
+                className={lobby.mode === 'bomb' ? 'active' : ''}
+                onClick={() => sendMode('bomb')}
+              >
+                Bombe
+              </button>
+            </div>
+
+            <button className="launch-button" onClick={startGame}>
+              Lancer la partie
+            </button>
+            <p className="status">Statut: {status}</p>
+          </section>
+
+          {/* Colonne droite: Vide pour le moment */}
+          <section className="screen-home-placeholder" />
+        </div>
       </main>
     )
   }

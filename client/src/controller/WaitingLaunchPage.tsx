@@ -1,4 +1,4 @@
-import { getReadableBackground, getFrenchColor } from './colorUtils'
+import { getReadableBackground, getReadableColor, getFrenchColor } from './colorUtils'
 
 type WaitingLaunchPageProps = {
   name: string
@@ -20,7 +20,7 @@ export function WaitingLaunchPage({
   onChangePseudo,
 }: WaitingLaunchPageProps) {
   return (
-    <main className="controller-layout waiting controller-force-landscape">
+    <main className="controller-layout waiting controller-force-landscape" style={isFullscreen ? { minHeight: '100vh' } : {}}>
       {!isFullscreen && (
         <>         
           <button
@@ -51,8 +51,16 @@ export function WaitingLaunchPage({
       <p>
         ID joueur: <span className="player-label-text">{playerLabel}</span>
       </p>
-      {playerColor && <p><span style={{ color: playerColor, backgroundColor: getReadableBackground(playerColor), padding: "4px 10px", borderRadius: "8px", boxShadow: `0 4px 12px ${playerColor}80`, border: `1px solid ${playerColor}`, display: "inline-block" }}>Perso {getFrenchColor(playerColor)}</span></p>}
-      <p className="log">En attente du lancement de partie sur l'ecran principal.</p>
+              {playerColor && <p><span style=
+              {{ color: getReadableColor(playerColor), 
+                padding: '4px 12px',
+                borderRadius: '15px',
+                border: '1.5px solid ' + getReadableColor(playerColor),
+                backgroundColor: getReadableBackground(playerColor),
+                fontSize: '16px',
+                fontWeight: 700,
+                letterSpacing: '0.04em'
+                }}>Perso {getFrenchColor(playerColor)}</span></p>}
     </main>
   )
 }

@@ -488,6 +488,7 @@ function updateGame(dt: number) {
 
         if (wasOnGround && !player.onGround && !jumpedThisTick) {
             player.jumpsLeft = Math.min(player.jumpsLeft, MAX_JUMPS - 1);
+            player.gravityMultiplier = 1;
         }
 
         if (landedTile) {
