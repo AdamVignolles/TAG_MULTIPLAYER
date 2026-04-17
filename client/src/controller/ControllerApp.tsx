@@ -445,6 +445,13 @@ export function ControllerApp() {
           setDown(true)
         }
       }}
+      onProximityTrigger={(buttonKey) => {
+        activePointersRef.current.get(buttonKey)!.add(Math.random())
+        if (buttonKey === 'left') setLeft(true)
+        else if (buttonKey === 'right') setRight(true)
+        else if (buttonKey === 'jump') setJump(true)
+        else if (buttonKey === 'down') setDown(true)
+      }}
     />
   )
 }

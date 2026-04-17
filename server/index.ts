@@ -126,7 +126,7 @@ const MODE_CONFIG: Record<GameMode, {
         baseSpeed: 200,
         tagSpeedBonus: -15,
         gravity: 1100,
-        jumpForce: 460,
+        jumpForce: 480,
         baseRoundDurationMs: 45000,
     },
     bomb: {
@@ -505,9 +505,10 @@ function updateGame(dt: number) {
                 const distSq = dx * dx + dy * dy;
                 if (distSq < (PLAYER_RADIUS * 2) ** 2) {
                     if (gameMode === "zombie" && !candidate.isTag && !candidate.transformationStartTime) {
-                        // Start transformation
-                        candidate.transformationStartTime = Date.now();
+                        // Tag immediately
+                        candidate.isTag = true;
                         candidate.transformedFrom = tagger.id;
+                        candidate.transformationStartTime = Date.now();
                         broadcast({
                             type: "tag_event",
                             from: tagger.name,
@@ -528,11 +529,10 @@ function updateGame(dt: number) {
         }
     }
 
-    // Zombie mode: handle transformation completion
+    // Zombie mode: handle transformation cleanup after delay
     if (gameMode === "zombie") {
         players.forEach((player) => {
             if (player.transformationStartTime && Date.now() - player.transformationStartTime >= ZOMBIE_TRANSFORMATION_TIME_MS) {
-                player.isTag = true;
                 player.transformationStartTime = null;
             }
         });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView } from '../types/ws'
-import { getSpriteUrl, SPRITE_DIMENSIONS } from '../utils/characterManager'
+import { getSpriteUrl } from '../utils/characterManager'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`

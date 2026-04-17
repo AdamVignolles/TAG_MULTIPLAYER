@@ -1,5 +1,8 @@
 import type { PointerEvent, TouchEvent } from 'react'
-import { getReadableBackground, getFrenchColor } from './colorUtils'
+import { useRef, useEffect } from 'react'
+import { getReadableBackground, getReadableColor, getFrenchColor } from './colorUtils'
+import type { ButtonKey } from './proximityDetection'
+import { getButtonRects, getClosestButtonWithFallback } from './proximityDetection'
 
 type GamepadPageProps = {
   name: string
@@ -20,6 +23,7 @@ type GamepadPageProps = {
   onJumpTouchStart: (event: TouchEvent<HTMLButtonElement>) => void
   onDownPointerDown: (event: PointerEvent<HTMLButtonElement>) => void
   onDownTouchStart: (event: TouchEvent<HTMLButtonElement>) => void
+  onProximityTrigger?: (buttonKey: ButtonKey) => void
 }
 
 export function GamepadPage({
@@ -41,10 +45,81 @@ export function GamepadPage({
   onJumpTouchStart,
   onDownPointerDown,
   onDownTouchStart,
+  onProximityTrigger,
 }: GamepadPageProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRectsRef = useRef<ReturnType<typeof getButtonRects>>([])
+
+  // Mettre à jour les rectangles des boutons quand le composant change
+  useEffect(() => {
+    function updateButtonRects() {
+      if (containerRef.current) {
+        buttonRectsRef.current = getButtonRects(containerRef.current)
+      }
+    }
+
+    updateButtonRects()
+    window.addEventListener('resize', updateButtonRects)
+    window.addEventListener('orientationchange', updateButtonRects)
+
+    return () => {
+      window.removeEventListener('resize', updateButtonRects)
+      window.removeEventListener('orientationchange', updateButtonRects)
+    }
+  }, [])
+
+  const handleProximityTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    if (!onProximityTrigger || buttonRectsRef.current.length === 0) return
+
+    for (const touch of Array.from(e.changedTouches)) {
+      const closestButton = getClosestButtonWithFallback(
+        touch.clientX,
+        touch.clientY,
+        buttonRectsRef.current
+      )
+
+      if (closestButton) {
+        onProximityTrigger(closestButton)
+      }
+    }
+  }
   return (
-    <main className="controller-layout controller-force-landscape">
-      {!isFullscreen && (
+    <main className="controller-layout controller-force-landscape" ref={containerRef} onTouchStart={handleProximityTouchStart}>
+
+      <div className="top-buttons">
+        <div className="top-buttons-player">
+          <div className="hud-label">Joueur</div> 
+          <div className="hud-value">{name}</div>
+          <div className="hud-sep"></div>
+          <div className="hud-label">ID</div>
+          {playerColor && <span style= {{ color: getReadableColor(playerColor), 
+          padding: '4px 12px',
+          borderRadius: '15px',
+          border: '1.5px solid ' + getReadableColor(playerColor),
+          backgroundColor: getReadableBackground(playerColor),
+          fontSize: '16px',
+          fontWeight: 700,
+          letterSpacing: '0.04em'
+          }}>{playerLabel}</span>}
+      </div>
+        
+        <div className={`player-tag-state ${playerTagState === 'TAG' ? 'tag' : 'free'}`}>
+            <div className={`status-dot ${playerTagState === 'TAG' ? 'tag' : 'free'}`}></div>
+            {playerTagState}
+        </div>
+        
+        {playerColor && <p><span style=
+        {{ color: getReadableColor(playerColor), 
+          padding: '4px 12px',
+          borderRadius: '15px',
+          border: '1.5px solid ' + getReadableColor(playerColor),
+          backgroundColor: getReadableBackground(playerColor),
+          fontSize: '16px',
+          fontWeight: 700,
+          letterSpacing: '0.04em'
+          }}>Perso {getFrenchColor(playerColor)}</span></p>}
+
+          {!isFullscreen && (
         <button
             className="fullscreen-button"
             onClick={onRequestFullscreen}
@@ -53,25 +128,7 @@ export function GamepadPage({
             type="button"
           >
           <i className="fa-solid fa-expand"></i>
-          </button>
-      )}
-      <div className="infosJoueur">
-        <p>Joueur: {name}</p>
-        <p>
-          ID joueur: <span className="player-label-text">{playerLabel}</span>
-        </p>
-        <p>
-          <span className={`player-tag-state ${playerTagState === 'TAG' ? 'tag' : 'free'}`}>
-            Tu es {playerTagState}
-          </span>
-        </p>
-        {playerColor && <p><span style={{ color: playerColor,
-        backgroundColor: getReadableBackground(playerColor),
-        padding: "4px 10px",
-        borderRadius: "8px",
-        boxShadow: `0 4px 12px ${playerColor}80`,
-        border: `1px solid ${playerColor}`,
-        display: "inline-block"}}>Perso {getFrenchColor(playerColor)}</span></p>}
+          </button>)}
       </div>
 
       <div className="controller-grid">

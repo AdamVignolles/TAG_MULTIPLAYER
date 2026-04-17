@@ -23,7 +23,7 @@ export function getRandomCharacter(): CharacterType {
 /**
  * Obtient l'URL du sprite pour un personnage et son animation
  */
-export function getSpriteUrl(character: CharacterType, animation: AnimationState = 'idle'): string {
+export function getSpriteUrl(character: CharacterType): string {
   return `/characters/${character}.png`
 }
 
