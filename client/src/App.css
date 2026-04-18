@@ -53,7 +53,7 @@ button {
   padding: 1rem;
 }
 
-.screen-home {
+.screen-home, .turnPhone {
   min-height: 100vh;
 }
 
@@ -65,7 +65,7 @@ button {
   max-width: 2000px;
   padding: 1rem;
   margin: 0 auto;
-  align-items: start;
+  align-items: stretch;
 }
 
 .screen-home-blocks-section {
@@ -73,6 +73,7 @@ button {
   flex-direction: column;
   gap: 0.8rem;
   width: 100%;
+  height: 100%;
 }
 
 .screen-home-blocks-section h2 {
@@ -85,6 +86,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  margin: auto 0;
 }
 
 .block-card {
@@ -105,6 +107,12 @@ button {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   flex-shrink: 0;
+  position: static !important;
+}
+
+.block-sample.tile {
+  border: 2px solid #6f3c1c;
+  opacity: 0.96;
 }
 
 .block-info {
@@ -157,6 +165,8 @@ button {
   align-items: center;
   gap: 0.9rem;
   text-align: center;
+  height: 100%;
+  justify-content: flex-start;
 }
 
 .screen-home-card h1,
@@ -230,6 +240,92 @@ button {
   padding: 0.95rem;
   background: #ff8b6f;
   color: #2f0d06;
+}
+
+.mode-rules-card {
+  width: 100%;
+}
+
+.mode-description {
+  width: 100%;
+  text-align: left;
+}
+
+.mode-description h2 {
+  font-size: 1.3rem;
+  color: #ffc86d;
+  margin: 0.5rem 0 0.3rem 0;
+  text-transform: capitalize;
+}
+
+.mode-tagline {
+  font-size: 0.95rem;
+  font-style: italic;
+  color: #b3d9aa;
+  margin: 0.5rem 0 1rem 0;
+  line-height: 1.4;
+}
+
+.mode-rules-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mode-rules-list li {
+  font-size: 1rem;
+  color: #d4eedf;
+  padding-left: 1.5rem;
+  position: relative;
+  line-height: 1.6;
+}
+
+.mode-rules-list li::before {
+  content: '▹';
+  position: absolute;
+  left: 0;
+  color: #ffc86d;
+  font-weight: bold;
+}
+
+.game-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 1.2rem;
+  width: 100%;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(212, 238, 223, 0.2);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #a8c9b5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-item strong {
+  font-size: 1.3rem;
+  color: #ffc86d;
+}
+
+.stat-item strong.stat-reached {
+  color: #6db54f;
+}
+
+.stat-item strong.stat-not-reached {
+  color: #ff6b6b;
 }
 
 /* ============================================================

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView } from '../types/ws'
 import { getSpriteUrl } from '../utils/characterManager'
+import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached } from '../utils/rulesGameMode'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -47,30 +48,36 @@ const TILE_COLORS: Record<string, string> = {
   speedDown: '#4d8f3d ',
 }
 
-const TILE_DESCRIPTIONS: Record<string, { name: string; description: string }> = {
+const TILE_DESCRIPTIONS: Record<string, { name: string; description: string; className: string }> = {
   solid: {
     name: 'Solide',
     description: 'Un bloc de base solide. Vous pouvez sauter dessus.',
+    className: 'solid',
   },
   jumpBoost: {
     name: 'Rebond (+)',
     description: 'Augmente votre hauteur de saut et votre force.',
+    className: 'jumpBoost',
   },
   jumpDown: {
     name: 'Rebond (-)',
     description: 'Réduit votre hauteur de saut et votre force.',
+    className: 'jumpDown',
   },
   passable: {
     name: 'Passable',
     description: 'Un bloc transparent. Vous pouvez passer monter dessus ou passer à travers avec les boutons de saut.',
+    className: 'passable',
   },
   speedUp: {
     name: 'Vitesse (+)',
     description: 'Augmente votre vitesse de déplacement.',
+    className: 'speedUp',
   },
   speedDown: {
     name: 'Vitesse (-)',
     description: 'Réduit votre vitesse de déplacement.',
+    className: 'speedDown',
   },
 }
 
@@ -241,8 +248,7 @@ export function ScreenApp() {
                 {Object.entries(TILE_DESCRIPTIONS).map(([type, info]) => (
                   <div key={type} className="block-card">
                     <div
-                      className="block-sample"
-                      style={{ backgroundColor: TILE_COLORS[type] }}
+                      className={`block-sample tile ${info.className}`}
                       aria-hidden="true"
                     />
                     <div className="block-info">
@@ -284,19 +290,19 @@ export function ScreenApp() {
                 className={lobby.mode === 'classic' ? 'active' : ''}
                 onClick={() => sendMode('classic')}
               >
-                Classique
+                {getFrenchMode('classic')}
               </button>
               <button
                 className={lobby.mode === 'zombie' ? 'active' : ''}
                 onClick={() => sendMode('zombie')}
               >
-                Zombie
+                {getFrenchMode('zombie')}
               </button>
               <button
                 className={lobby.mode === 'bomb' ? 'active' : ''}
                 onClick={() => sendMode('bomb')}
               >
-                Bombe
+                {getFrenchMode('bomb')}
               </button>
             </div>
 
@@ -306,8 +312,38 @@ export function ScreenApp() {
             <p className="status">Statut: {status}</p>
           </section>
 
-          {/* Colonne droite: Vide pour le moment */}
-          <section className="screen-home-placeholder" />
+          <section className="screen-home-card mode-rules-card">
+              <h1>Règles du jeu</h1>
+              <div className="mode-description">
+                <h2>{getModeDescription(lobby.mode)?.title}</h2>
+                <p className="mode-tagline">{getModeDescription(lobby.mode)?.description}</p>
+                <ul className="mode-rules-list">
+                  {getModeRules(lobby.mode).map((rule, index) => (
+                    <li key={index}>{rule}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="game-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Durée</span>
+                  <strong>{getGameStats(lobby.mode, lobby.connectedPlayers).duree}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Gagnant(s)</span>
+                  <strong>{getGameStats(lobby.mode, lobby.connectedPlayers).gagnant}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Nombre de TAG</span>
+                  <strong>{getGameStats(lobby.mode, lobby.connectedPlayers).tag}</strong>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Joueurs minimum</span>
+                  <strong className={isMinPlayersReached(lobby.connectedPlayers, getGameStats(lobby.mode, lobby.connectedPlayers).minPlayers) ? 'stat-reached' : 'stat-not-reached'}>
+                    {isMinPlayersReached(lobby.connectedPlayers, getGameStats(lobby.mode, lobby.connectedPlayers).minPlayers) ? '✓ Atteint' : '✗ Non atteint'}
+                  </strong>
+                </div>
+              </div>
+          </section>
         </div>
       </main>
     )

@@ -14,7 +14,7 @@ export function ConnectionPage({
   onSubmitName,
 }: ConnectionPageProps) {
   return (
-    <main className={`controller-name-layout ${isPortrait ? 'controller-name-portrait' : ''}`}>
+    <main className={`controller-name-layout ${isPortrait ? 'controller-name-portrait' : ''} turnPhone`}>
       <section className={`controller-name-card ${isPortrait ? 'controller-name-portrait' : ''}`}>
         <h1>Choisis ton pseudo</h1>
         <p>Entre ton pseudo pour rejoindre la partie.</p>
