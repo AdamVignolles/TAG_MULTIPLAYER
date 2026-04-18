@@ -395,6 +395,13 @@ function updateGame(dt: number) {
             }
         }
 
+        const isFalling = !player.onGround && player.vy > 0;
+        if (isFalling && player.input.down) {
+            player.gravityMultiplier = 1.5;
+        } else if (player.gravityMultiplier === 1.5) {
+            player.gravityMultiplier = 1;
+        }
+
         player.vy += mode.gravity * player.gravityMultiplier * dt;
 
         // Resolve horizontal movement first to block side traversal on solid tiles.

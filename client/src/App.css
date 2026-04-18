@@ -60,7 +60,7 @@ button {
 .screen-home-layout {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 5rem;
+  gap: 3rem;
   width: 100%;
   max-width: 2000px;
   padding: 1rem;

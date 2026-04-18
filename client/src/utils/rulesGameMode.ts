@@ -68,13 +68,13 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
       minPlayers: 2,
     },
     zombie: {
-      duree: '3 min',
+      duree: '30/60 sec',
       gagnant: '1+',
       tag: '1+',
       minPlayers: 5,
     },
     bomb: {
-      duree: '3 min',
+      duree: '~ 3 min',
       gagnant: '1',
       tag: '1-11',
       minPlayers: 3,

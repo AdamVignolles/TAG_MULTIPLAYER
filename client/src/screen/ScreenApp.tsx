@@ -339,7 +339,7 @@ export function ScreenApp() {
                 <div className="stat-item">
                   <span className="stat-label">Joueurs minimum</span>
                   <strong className={isMinPlayersReached(lobby.connectedPlayers, getGameStats(lobby.mode, lobby.connectedPlayers).minPlayers) ? 'stat-reached' : 'stat-not-reached'}>
-                    {isMinPlayersReached(lobby.connectedPlayers, getGameStats(lobby.mode, lobby.connectedPlayers).minPlayers) ? '✓ Atteint' : '✗ Non atteint'}
+                    {`${lobby.connectedPlayers}/${getGameStats(lobby.mode, lobby.connectedPlayers).minPlayers}`}
                   </strong>
                 </div>
               </div>
