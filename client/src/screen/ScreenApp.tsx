@@ -411,7 +411,7 @@ export function ScreenApp() {
         })}
 
         {(gameState?.players ?? []).map((player) => {
-          const isTag = gameState?.mode === 'zombie' ? player.isTag : gameState?.tagPlayerId === player.id
+          const isTag = gameState?.mode === 'zombie' ? player.isTag : (gameState?.mode === 'bomb' ? player.isTag : gameState?.tagPlayerId === player.id)
           const spriteSize = 32
           const frameIndex = getAnimationFrame(player)
           const backgroundYOffset = frameIndex * spriteSize
