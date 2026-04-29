@@ -3,6 +3,13 @@ import { WebSocketServer, WebSocket } from "ws";
 import { ARENA_HEIGHT, ARENA_WIDTH, FLOOR_Y, createSimpleMap } from "./BlocMap.ts";
 import type { Tile } from "./BlocMap.ts";
 import { applyTileEffects } from "./EffectsBlocs.ts";
+import { handleClassicRoundEnd, getClassicSpeed } from "./Modes/classic.ts";
+import {
+    handleZombieRoundEnd,
+    handleZombieAllTagsGameOver,
+    getZombieSpeed,
+    calculateZombieDuration,
+} from "./Modes/zombie.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
@@ -43,7 +50,7 @@ type InputMessage = {
 
 type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage | StopGameMessage | SetCharacterMessage;
 
-type Player = {
+export type Player = {
     id: string;
     sessionId: string;
     name: string;
@@ -102,8 +109,6 @@ const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
 const ZOMBIE_TRANSFORMATION_TIME_MS = 3000;
-const ZOMBIE_MIN_DURATION_MS = 30000;
-const ZOMBIE_MAX_DURATION_MS = 60000;
 
 const MODE_CONFIG: Record<GameMode, {
     label: string;
@@ -175,14 +180,6 @@ function broadcast(payload: unknown) {
 
 function getRemainingMs() {
     return Math.max(0, roundDurationMs - (Date.now() - roundStartTs));
-}
-
-function calculateZombieDuration(playerCount: number): number {
-    // Scale duration linearly: fewer players = longer duration
-    // 1 player: 60s, 5+ players: 30s
-    if (playerCount <= 1) return ZOMBIE_MAX_DURATION_MS;
-    const ratio = Math.max(0, Math.min(1, (playerCount - 1) / 4));
-    return ZOMBIE_MAX_DURATION_MS - ratio * (ZOMBIE_MAX_DURATION_MS - ZOMBIE_MIN_DURATION_MS);
 }
 
 function broadcastLobby() {
@@ -278,48 +275,18 @@ function resetRoundIfNeeded() {
         return;
     }
 
+    let message: string;
     if (gameMode === "zombie") {
-        // Zombie mode: count tags and non-tags
-        const tags = [...players.values()].filter((p) => p.isTag);
-        const nonTags = [...players.values()].filter((p) => !p.isTag);
-
-        let message: string;
-        if (nonTags.length > 0) {
-            // Non-tags win
-            const winnerNames = nonTags.map((p) => p.name).join(", ");
-            message = `Temps écoulé! Les survivants gagnent: ${winnerNames}.`;
-        } else if (tags.length > 0) {
-            // All are tags, those who transformed someone win
-            const winnersWithTransform = tags.filter(
-                (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
-            );
-            if (winnersWithTransform.length > 0) {
-                const winnerNames = winnersWithTransform.map((p) => p.name).join(", ");
-                message = `Apocalypse zombie! Gagnants (qui ont transformé): ${winnerNames}.`;
-            } else {
-                message = `Apocalypse zombie! Mode de fin indéfini.`;
-            }
-        } else {
-            message = `Fins de temps: pas de gagnants identifiés.`;
-        }
-
-        broadcast({
-            type: "game_over",
-            message,
-        });
+        const result = handleZombieRoundEnd(players);
+        message = result.message;
     } else {
-        // Classic mode: tag loses, others win
-        const loserId = tagPlayerId;
-        const loserName = loserId ? players.get(loserId)?.name ?? "Inconnu" : "Inconnu";
-        const winners = [...players.values()]
-            .filter((player) => player.id !== loserId)
-            .map((player) => player.name);
-        const winnersText = winners.length > 0 ? winners.join(", ") : "personne";
-        broadcast({
-            type: "game_over",
-            message: `${loserName} est TAG à la fin du temps : il perd. Gagnants: ${winnersText}.`,
-        });
+        message = handleClassicRoundEnd(tagPlayerId, players);
     }
+
+    broadcast({
+        type: "game_over",
+        message,
+    });
 
     players.forEach((player) => {
         player.x = 120 + ((Math.random() * 600) | 0);
@@ -368,9 +335,9 @@ function updateGame(dt: number) {
             const horizontal = Number(player.input.right) - Number(player.input.left);
             let speed = mode.baseSpeed;
             if (gameMode === "zombie") {
-                speed = player.isTag ? mode.baseSpeed + mode.tagSpeedBonus : mode.baseSpeed;
+                speed = getZombieSpeed(player, mode.baseSpeed, mode.tagSpeedBonus);
             } else if (gameMode === "classic") {
-                speed = player.id === tagPlayerId ? mode.baseSpeed + mode.tagSpeedBonus : mode.baseSpeed;
+                speed = getClassicSpeed(player, tagPlayerId, mode.baseSpeed, mode.tagSpeedBonus);
             }
             player.vx = horizontal * speed;
 
@@ -549,15 +516,10 @@ function updateGame(dt: number) {
         const allTags = [...players.values()].every((p) => p.isTag);
         if (allTags && players.size > 0) {
             gameStarted = false;
-            const winnersWithTransform = [...players.values()].filter(
-                (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
-            );
-            const winnerNames = winnersWithTransform.length > 0 
-                ? winnersWithTransform.map((p) => p.name).join(", ")
-                : "personne";
+            const message = handleZombieAllTagsGameOver(players);
             broadcast({
                 type: "game_over",
-                message: `Apocalypse zombie! Tous sont devenus tags. Gagnants (qui ont transformé): ${winnerNames}.`,
+                message,
             });
         }
     }
