@@ -1,5 +1,15 @@
 import type { Player } from "../index.ts";
 
+export const CLASSIC_CONFIG = {
+    label: "Classique",
+    baseSpeed: 220,
+    tagSpeedBonus: 18,
+    gravity: 1100,
+    jumpForce: 480,
+    baseRoundDurationMs: 180000,
+    minPlayers: 2,
+};
+
 export function handleClassicRoundEnd(
     tagPlayerId: string | null,
     players: Map<string, Player>,

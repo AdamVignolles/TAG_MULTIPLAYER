@@ -3,13 +3,15 @@ import { WebSocketServer, WebSocket } from "ws";
 import { ARENA_HEIGHT, ARENA_WIDTH, FLOOR_Y, createSimpleMap } from "./BlocMap.ts";
 import type { Tile } from "./BlocMap.ts";
 import { applyTileEffects } from "./EffectsBlocs.ts";
-import { handleClassicRoundEnd, getClassicSpeed } from "./Modes/classic.ts";
+import { handleClassicRoundEnd, getClassicSpeed, CLASSIC_CONFIG } from "./Modes/classic.ts";
 import {
     handleZombieRoundEnd,
     handleZombieAllTagsGameOver,
     getZombieSpeed,
     calculateZombieDuration,
+    ZOMBIE_CONFIG,
 } from "./Modes/zombie.ts";
+import { BOMB_CONFIG } from "./Modes/bomb.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
@@ -117,31 +119,11 @@ const MODE_CONFIG: Record<GameMode, {
     gravity: number;
     jumpForce: number;
     baseRoundDurationMs: number;
+    minPlayers: number;
 }> = {
-    classic: {
-        label: "Classique",
-        baseSpeed: 220,
-        tagSpeedBonus: 18,
-        gravity: 1100,
-        jumpForce: 480,
-        baseRoundDurationMs: 180000,
-    },
-    zombie: {
-        label: "Zombie",
-        baseSpeed: 200,
-        tagSpeedBonus: -15,
-        gravity: 1100,
-        jumpForce: 480,
-        baseRoundDurationMs: 45000,
-    },
-    bomb: {
-        label: "Bombe",
-        baseSpeed: 240,
-        tagSpeedBonus: 14,
-        gravity: 1250,
-        jumpForce: 500,
-        baseRoundDurationMs: 90000,
-    },
+    classic: CLASSIC_CONFIG,
+    zombie: ZOMBIE_CONFIG,
+    bomb: BOMB_CONFIG,
 };
 
 const CHARACTERS: CharacterType[] = ["blue", "yellow", "green", "purple", "red"];
@@ -640,6 +622,12 @@ wss.on("connection", (ws: WebSocket) => {
 
             if (players.size === 0) {
                 send(ws, { type: "error", message: "Aucun joueur connecté" });
+                return;
+            }
+
+            const minPlayersRequired = MODE_CONFIG[gameMode].minPlayers;
+            if (players.size < minPlayersRequired) {
+                send(ws, { type: "error", message: `Minimum ${minPlayersRequired} joueurs requis pour ce mode (actuellement ${players.size})` });
                 return;
             }
 

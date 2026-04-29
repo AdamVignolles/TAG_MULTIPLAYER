@@ -1,5 +1,15 @@
 import type { Player } from "../index.ts";
 
+export const ZOMBIE_CONFIG = {
+    label: "Zombie",
+    baseSpeed: 200,
+    tagSpeedBonus: -15,
+    gravity: 1100,
+    jumpForce: 480,
+    baseRoundDurationMs: 45000,
+    minPlayers: 5,
+};
+
 export interface ZombieRoundEndResult {
     message: string;
     allZombies: boolean;
