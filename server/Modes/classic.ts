@@ -32,3 +32,18 @@ export function getClassicSpeed(
 ): number {
     return player.id === tagPlayerId ? baseSpeed + tagSpeedBonus : baseSpeed;
 }
+
+export function handleClassicTag(
+    tagger: Player,
+    candidate: Player,
+    broadcast: (msg: any) => void,
+    lastTagTs: () => void,
+): string {
+    // Classic mode tag transfer
+    broadcast({
+        type: "tag_event",
+        from: tagger.name,
+        to: candidate.name,
+    });
+    return candidate.id;
+}

@@ -3,15 +3,19 @@ import { WebSocketServer, WebSocket } from "ws";
 import { ARENA_HEIGHT, ARENA_WIDTH, FLOOR_Y, createSimpleMap } from "./BlocMap.ts";
 import type { Tile } from "./BlocMap.ts";
 import { applyTileEffects } from "./EffectsBlocs.ts";
-import { handleClassicRoundEnd, getClassicSpeed, CLASSIC_CONFIG } from "./Modes/classic.ts";
+import { handleClassicRoundEnd, getClassicSpeed, handleClassicTag, CLASSIC_CONFIG } from "./Modes/classic.ts";
 import {
     handleZombieRoundEnd,
     handleZombieAllTagsGameOver,
     getZombieSpeed,
     calculateZombieDuration,
+    handleZombieTag,
+    handleZombieTransformationCleanup,
+    checkZombieAllTagsGameOver,
+    ZOMBIE_TRANSFORMATION_TIME_MS,
     ZOMBIE_CONFIG,
 } from "./Modes/zombie.ts";
-import { BOMB_CONFIG, getBombCounterForPlayerCount, getInitialTagCountForPlayerCount } from "./Modes/bomb.ts";
+import { BOMB_CONFIG, getBombCounterForPlayerCount, getInitialTagCountForPlayerCount, initBombMode, updateBombMode, handleBombRoundEnd, handleBombTransfer } from "./Modes/bomb.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
@@ -115,7 +119,6 @@ const PLAYER_RADIUS = 16;
 const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
-const ZOMBIE_TRANSFORMATION_TIME_MS = 3000;
 
 const MODE_CONFIG: Record<GameMode, {
     label: string;
@@ -258,40 +261,6 @@ function pickRandomPlayerId(): string | null {
     return ids[randomIndex] ?? null;
 }
 
-function initBombMode() {
-    const playerCount = players.size;
-    const initialTagCount = getInitialTagCountForPlayerCount(playerCount);
-    const bombCounter = getBombCounterForPlayerCount(playerCount);
-    const now = Date.now();
-    
-    bombTagPlayerIds.clear();
-    const playerIds = [...players.keys()];
-    
-    // Shuffle and select initial TAGs
-    const shuffled = [...playerIds].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < Math.min(initialTagCount, shuffled.length); i++) {
-        const selectedId = shuffled[i];
-        bombTagPlayerIds.add(selectedId);
-        const player = players.get(selectedId)!;
-        player.isTag = true;
-        player.bombCounter = bombCounter;
-        player.bombCounterPersonal = bombCounter;
-        player.bombCounterStartTime = now;
-        player.isEliminated = false;
-    }
-    
-    // Initialize non-TAGs
-    for (const [id, player] of players) {
-        if (!bombTagPlayerIds.has(id)) {
-            player.isTag = false;
-            player.bombCounter = bombCounter;
-            player.bombCounterPersonal = bombCounter;
-            player.bombCounterStartTime = 0;
-            player.isEliminated = false;
-        }
-    }
-}
-
 function resetRoundIfNeeded() {
     if (!gameStarted) {
         return;
@@ -340,72 +309,13 @@ function resetRoundIfNeeded() {
     if (gameMode === "zombie") {
         roundDurationMs = calculateZombieDuration(players.size);
     } else if (gameMode === "bomb") {
-        initBombMode();
+        initBombMode(players, bombTagPlayerIds);
     }
     tagPlayerId = pickRandomPlayerId();
     if (tagPlayerId && gameMode === "zombie") {
         players.get(tagPlayerId)!.isTag = true;
     }
     lastTagTs = Date.now();
-}
-
-function updateBombMode(dt: number) {
-    // Update bomb counters for TAG players
-    for (const tagId of bombTagPlayerIds) {
-        const tagPlayer = players.get(tagId);
-        if (!tagPlayer || tagPlayer.isEliminated) continue;
-        
-        // TAGs have their personal counter tick down each frame
-        tagPlayer.bombCounter = Math.max(0, tagPlayer.bombCounter - dt);
-        
-        // Check if bomb counter reaches 0
-        if (tagPlayer.bombCounter <= 0 && !tagPlayer.isEliminated) {
-            tagPlayer.isEliminated = true;
-            broadcast({
-                type: "tag_event",
-                from: "Bombe",
-                to: tagPlayer.name,
-            });
-        }
-    }
-    
-    // Check win/loss conditions
-    const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
-    const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
-    const tagPlayers = nonEliminatedPlayers.filter(p => p.isTag);
-    
-    // If non-TAG players > TAG players and a TAG is eliminated, reassign a new TAG
-    if (nonTagPlayers.length > tagPlayers.length && nonTagPlayers.length > 0) {
-        // Find an eliminated TAG
-        const eliminatedTag = [...bombTagPlayerIds].find(id => players.get(id)?.isEliminated);
-        if (eliminatedTag) {
-            // Pick a random non-TAG to become TAG
-            const newTagPlayer = nonTagPlayers[Math.floor(Math.random() * nonTagPlayers.length)];
-            if (newTagPlayer) {
-                bombTagPlayerIds.delete(eliminatedTag);
-                bombTagPlayerIds.add(newTagPlayer.id);
-                newTagPlayer.isTag = true;
-                const newBombCounter = getBombCounterForPlayerCount(nonEliminatedPlayers.length);
-                newTagPlayer.bombCounter = newBombCounter;
-                newTagPlayer.bombCounterPersonal = newBombCounter;
-                newTagPlayer.bombCounterStartTime = Date.now();
-                broadcast({
-                    type: "tag_event",
-                    from: "Système",
-                    to: newTagPlayer.name,
-                });
-            }
-        }
-    }
-    
-    // Check loss condition: all non-TAG players eliminated
-    if (nonTagPlayers.length === 0 && nonEliminatedPlayers.length > 0) {
-        gameStarted = false;
-        broadcast({
-            type: "game_over",
-            message: "Tous les joueurs ont été éliminés!",
-        });
-    }
 }
 
 function updateGame(dt: number) {
@@ -590,39 +500,10 @@ function updateGame(dt: number) {
                 const distSq = dx * dx + dy * dy;
                 if (distSq < (PLAYER_RADIUS * 2) ** 2) {
                     if (gameMode === "zombie" && !candidate.isTag && !candidate.transformationStartTime) {
-                        // Tag immediately
-                        candidate.isTag = true;
-                        candidate.transformedFrom = tagger.id;
-                        candidate.transformationStartTime = Date.now();
-                        broadcast({
-                            type: "tag_event",
-                            from: tagger.name,
-                            to: candidate.name,
-                        });
+                        handleZombieTag(tagger, candidate, broadcast);
                     } else if (gameMode === "bomb" && tagger.isTag && !candidate.isTag && !candidate.isEliminated) {
-                        // Transfer bomb in bomb mode
-                        // TAG becomes non-TAG: freeze at current counter
-                        // Non-TAG becomes TAG: resume counting from their frozen counter
-                        const tagCurrentCounter = tagger.bombCounter;
-                        
-                        bombTagPlayerIds.delete(tagger.id);
-                        bombTagPlayerIds.add(candidate.id);
-                        
-                        tagger.isTag = false;
-                        tagger.bombCounter = tagCurrentCounter;
-                        tagger.bombCounterStartTime = 0;
-                        
-                        candidate.isTag = true;
-                        // Don't change candidate.bombCounter - it's already frozen at its current value
-                        // Just mark it as TAG to start the countdown
-                        candidate.bombCounterStartTime = Date.now();
-                        
+                        handleBombTransfer(tagger, candidate, bombTagPlayerIds, broadcast);
                         lastTagTs = Date.now();
-                        broadcast({
-                            type: "tag_event",
-                            from: tagger.name,
-                            to: candidate.name,
-                        });
                         break tagOuterLoop;
                     } else if (gameMode !== "zombie" && gameMode !== "bomb") {
                         tagPlayerId = candidate.id;
@@ -639,17 +520,12 @@ function updateGame(dt: number) {
         }
     }
 
-    // Zombie mode: handle transformation cleanup after delay
+     // Zombie mode: handle transformation cleanup after delay
     if (gameMode === "zombie") {
-        players.forEach((player) => {
-            if (player.transformationStartTime && Date.now() - player.transformationStartTime >= ZOMBIE_TRANSFORMATION_TIME_MS) {
-                player.transformationStartTime = null;
-            }
-        });
+        handleZombieTransformationCleanup(players);
         
         // Check if all players are tags - immediate game over
-        const allTags = [...players.values()].every((p) => p.isTag);
-        if (allTags && players.size > 0) {
+        if (checkZombieAllTagsGameOver(players)) {
             gameStarted = false;
             const message = handleZombieAllTagsGameOver(players);
             broadcast({
@@ -660,9 +536,9 @@ function updateGame(dt: number) {
     }
 
     // Bomb mode: handle bomb counters and eliminations
-    if (gameMode === "bomb") {
-        updateBombMode(dt);
-    }
+        if (gameMode === "bomb") {
+            updateBombMode(dt, players, bombTagPlayerIds, broadcast);
+        }
 
     resetRoundIfNeeded();
 
@@ -839,7 +715,7 @@ wss.on("connection", (ws: WebSocket) => {
 
             // Initialize bomb mode
             if (gameMode === "bomb") {
-                initBombMode();
+                initBombMode(players, bombTagPlayerIds);
             }
 
             broadcast({
@@ -925,4 +801,4 @@ setInterval(() => {
     updateGame(TICK_MS / 1000);
 }, TICK_MS);
 
-console.log("Serveur TAG minimal lancé sur ws://localhost:3001");
+console.log("Serveur TAG lancé sur ws://localhost:3001");

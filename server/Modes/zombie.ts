@@ -1,5 +1,7 @@
 import type { Player } from "../index.ts";
 
+export const ZOMBIE_TRANSFORMATION_TIME_MS = 3000;
+
 export const ZOMBIE_CONFIG = {
     label: "Zombie",
     baseSpeed: 200,
@@ -74,4 +76,36 @@ export function calculateZombieDuration(playerCount: number): number {
     if (playerCount <= 1) return ZOMBIE_MAX_DURATION_MS;
     const ratio = Math.max(0, Math.min(1, (playerCount - 1) / 4));
     return ZOMBIE_MAX_DURATION_MS - ratio * (ZOMBIE_MAX_DURATION_MS - ZOMBIE_MIN_DURATION_MS);
+}
+
+export function handleZombieTag(
+    tagger: Player,
+    candidate: Player,
+    broadcast: (msg: any) => void,
+): void {
+    // Tag immediately in zombie mode
+    candidate.isTag = true;
+    candidate.transformedFrom = tagger.id;
+    candidate.transformationStartTime = Date.now();
+    broadcast({
+        type: "tag_event",
+        from: tagger.name,
+        to: candidate.name,
+    });
+}
+
+export function handleZombieTransformationCleanup(
+    players: Map<string, Player>,
+): void {
+    players.forEach((player) => {
+        if (player.transformationStartTime && Date.now() - player.transformationStartTime >= ZOMBIE_TRANSFORMATION_TIME_MS) {
+            player.transformationStartTime = null;
+        }
+    });
+}
+
+export function checkZombieAllTagsGameOver(
+    players: Map<string, Player>,
+): boolean {
+    return [...players.values()].every((p) => p.isTag) && players.size > 0;
 }
