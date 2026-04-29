@@ -63,7 +63,7 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
   const statsMap: Record<string, GameStats> = {
     classic: {
       duree: '3 min',
-      gagnant: playerCount <= 2 ? '/' : playerCount - 1,
+      gagnant: playerCount <= 2 ? '1+' : playerCount - 1,
       tag: '1',
       minPlayers: 2,
     },

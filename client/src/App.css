@@ -995,12 +995,18 @@ button {
   gap: 1rem;
 }
 
-.top-buttons-player {
+.top-buttons-left {
   display: flex;
   align-items: center;
   gap: .5rem;
 }
 
+.top-buttons-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 20px 
+}
 
 .fullscreen-button {
   display: inline-flex;

@@ -87,7 +87,7 @@ export function GamepadPage({
     <main className="controller-layout gamepad" ref={containerRef} onTouchStart={handleProximityTouchStart}>
 
       <div className="top-buttons">
-        <div className="top-buttons-player">
+        <div className="top-buttons-left">
           <div className="hud-label">Joueur</div> 
           <div className="hud-value">{name}</div>
           <div className="hud-sep"></div>
