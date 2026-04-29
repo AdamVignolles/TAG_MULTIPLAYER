@@ -14,6 +14,8 @@ export type PlayerView = {
   vy?: number
   onGround?: boolean
   isTag?: boolean
+  bombCounter?: number
+  isEliminated?: boolean
 }
 
 export type TileView = {

@@ -67,6 +67,7 @@ export function ControllerApp() {
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE'>('FREE')
   const [playerColor, setPlayerColor] = useState<string | null>(null)
+  const [bombTimer, setBombTimer] = useState<number | null>(null)
   const [, setLog] = useState('')
   const [lobby, setLobby] = useState<LobbyMessage | null>(null)
 
@@ -182,9 +183,10 @@ export function ControllerApp() {
                 const me = data.players.find((p) => p.id === currentPlayerId)
                 if (!me) return
 
-                const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : data.tagPlayerId === me.id
+                const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : (data.mode === 'bomb' ? Boolean(me.isTag) : data.tagPlayerId === me.id)
                 setPlayerTagState(isTag ? 'TAG' : 'FREE')
                 setPlayerColor(me.character ?? null)
+                setBombTimer(data.mode === 'bomb' && me.bombCounter !== undefined ? me.bombCounter : null)
                 return
               }
 
@@ -200,6 +202,7 @@ export function ControllerApp() {
 
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
+                setBombTimer(null)
               }
             } catch (error) {
               console.error('ws message parse error', error)
@@ -212,6 +215,7 @@ export function ControllerApp() {
             playerIdRef.current = null
             setPlayerTagState('FREE')
              setPlayerColor(null)
+             setBombTimer(null)
           }
 
           ws.send(JSON.stringify({
@@ -384,6 +388,7 @@ export function ControllerApp() {
       playerTagState={playerTagState}
       isFullscreen={isFullscreen}
       playerColor={playerColor}
+      bombTimer={bombTimer}
       onRequestFullscreen={requestFullscreen}
       left={left}
       right={right}

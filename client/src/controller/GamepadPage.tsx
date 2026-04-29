@@ -10,6 +10,7 @@ type GamepadPageProps = {
   playerTagState: 'TAG' | 'FREE'
   isFullscreen: boolean
   playerColor: string | null
+  bombTimer: number | null
   onRequestFullscreen: () => void
   left: boolean
   right: boolean
@@ -31,6 +32,7 @@ export function GamepadPage({
   playerLabel,
   playerTagState,
   playerColor,
+  bombTimer,
   isFullscreen,
   onRequestFullscreen,
   left,
@@ -108,16 +110,35 @@ export function GamepadPage({
             {playerTagState}
         </div>
         
-        {playerColor && <p><span style=
-        {{ color: getReadableColor(playerColor), 
-          padding: '4px 12px',
-          borderRadius: '15px',
-          border: '1.5px solid ' + getReadableColor(playerColor),
-          backgroundColor: getReadableBackground(playerColor),
-          fontSize: '16px',
-          fontWeight: 700,
-          letterSpacing: '0.04em'
-          }}>Perso {getFrenchColor(playerColor)}</span></p>}
+        <div className="top-buttons-right">
+          {bombTimer !== null && (
+            <span style={{ 
+              backgroundColor: bombTimer <= 3 ? '#FF1744' : 'white', 
+              color: bombTimer <= 3 ? 'white' : 'black', 
+              borderRadius: '50%', 
+              padding: '20px', 
+              width: '32px', 
+              height: '32px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: bombTimer <= 3 ? '20px' : '18px', 
+              fontWeight: bombTimer <= 3 ? 'bold' : 'normal', 
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)' 
+            }}>
+              {bombTimer.toFixed(1)}
+            </span>
+          )}
+          {playerColor && <span style=
+          {{ color: getReadableColor(playerColor), 
+            padding: '4px 12px',
+            borderRadius: '15px',
+            border: '1.5px solid ' + getReadableColor(playerColor),
+            backgroundColor: getReadableBackground(playerColor),
+            fontSize: '16px',
+            fontWeight: 700,
+            letterSpacing: '0.04em'
+            }}>Perso {getFrenchColor(playerColor)}</span>}
 
           {!isFullscreen && (
         <button
@@ -129,6 +150,7 @@ export function GamepadPage({
           >
           <i className="fa-solid fa-expand"></i>
           </button>)}
+        </div>
       </div>
 
       <div className="controller-grid">
