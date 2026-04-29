@@ -77,6 +77,7 @@ export function ControllerApp() {
   const [down, setDown] = useState(false)
   const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement))
+  const [gameOver, setGameOver] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerIdRef = useRef<string | null>(null)
@@ -203,6 +204,9 @@ export function ControllerApp() {
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
                 setBombTimer(null)
+                if (data.type === 'game_over') {
+                  setGameOver(true)
+                }
               }
             } catch (error) {
               console.error('ws message parse error', error)
@@ -344,6 +348,7 @@ export function ControllerApp() {
     setPlayerTagState('FREE')
     setPlayerColor(null)
     sentColorForPlayerIdRef.current = null
+    setGameOver(false)
   }
 
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
@@ -359,7 +364,7 @@ export function ControllerApp() {
     )
   }
 
-  if (!lobby?.started) {
+  if (!lobby?.started || gameOver) {
     if (isPortrait) {
       return <PortraitWarningPage showFullscreenHint />
     }

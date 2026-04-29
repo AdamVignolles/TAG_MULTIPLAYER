@@ -93,6 +93,7 @@ export function ScreenApp() {
     started: false,
   })
   const [gameState, setGameState] = useState<StateMessage | null>(null)
+  const [gameOverMessage, setGameOverMessage] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
   const controllerUrl = useMemo(
@@ -171,6 +172,9 @@ export function ScreenApp() {
 
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
+                if (data.type === 'game_over') {
+                  setGameOverMessage(data.message)
+                }
               }
             } catch (error) {
               console.error('ws message parse error', error)
@@ -219,6 +223,7 @@ export function ScreenApp() {
   function goHome() {
     setLobby((prev) => ({ ...prev, started: false }))
     setGameState(null)
+    setGameOverMessage(null)
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'stop_game' }))
@@ -352,6 +357,56 @@ export function ScreenApp() {
   const arenaW = gameState?.arena.width ?? 900
   const arenaH = gameState?.arena.height ?? 500
   const playerCount = gameState?.players.length ?? lobby.connectedPlayers
+
+  // Game over screen
+  if (gameOverMessage) {
+    return (
+      <main className="screen-layout game-screen">
+        <header className="game-hud">
+          <div className="hud-left">
+            <button className="home-button" onClick={goHome} title="Retour a l accueil" aria-label="Retour a l accueil">
+              <i className="fas fa-home" aria-hidden="true" />
+            </button>
+            <div>
+              <strong className="hud-title">Tag Arena</strong>
+              <p className="hud-subtitle">Partie terminée</p>
+            </div>
+          </div>
+
+          <div className="hud-stats">
+            <div className="hud-pill">
+              <span className="hud-pill-label">Statut</span>
+              <strong>{status}</strong>
+            </div>
+            <div className="hud-pill">
+              <span className="hud-pill-label">Mode</span>
+              <strong>{MODE_LABEL[lobby.mode]}</strong>
+            </div>
+            <div className="hud-pill">
+              <span className="hud-pill-label">Temps</span>
+              <strong>{formatTime(gameState?.remainingMs ?? 0)}</strong>
+            </div>
+            <div className="hud-pill">
+              <span className="hud-pill-label">Joueurs</span>
+              <strong>{playerCount}</strong>
+            </div>
+          </div>
+        </header>
+
+        <section className="game-over-screen">
+          <div className="game-over-container">
+            <h1 className="game-over-title">🎉 Partie Terminée! 🎉</h1>
+            <div className="game-over-message">
+              {gameOverMessage}
+            </div>
+            <button className="home-button-large" onClick={goHome}>
+              Retour à l'accueil
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <main className="screen-layout game-screen">
