@@ -57,6 +57,7 @@ export type GameOverResult = {
     id: string
     name: string
   }
+  winnerId?: string
 }
 
 export type ServerMessage =

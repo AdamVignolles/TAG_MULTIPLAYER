@@ -9,4 +9,5 @@ export interface GameOverResult {
         id: string;
         name: string;
     };
+    winnerId?: string;
 }

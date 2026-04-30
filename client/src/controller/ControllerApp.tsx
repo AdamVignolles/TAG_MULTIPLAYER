@@ -201,6 +201,15 @@ export function ControllerApp() {
                 return
               }
 
+              if (data.type === 'game_over_result') {
+                setBombTimer(null)
+                // If this player is the winner in bomb mode, show waiting page
+                if (data.result.winnerId && data.result.winnerId === playerIdRef.current) {
+                  setGameOver(true)
+                }
+                return
+              }
+
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
                 setBombTimer(null)

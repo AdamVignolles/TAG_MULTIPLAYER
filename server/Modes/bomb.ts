@@ -108,6 +108,7 @@ export function updateBombMode(
                         id: survivor.id,
                         name: survivor.name,
                     }],
+                    winnerId: survivor.id,
                 };
                 return gameOverResult;
             }
