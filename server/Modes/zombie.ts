@@ -1,4 +1,5 @@
 import type { Player } from "../index.ts";
+import type { GameOverResult } from "./GameOverResult.ts";
 
 export const ZOMBIE_TRANSFORMATION_TIME_MS = 3000;
 
@@ -12,51 +13,64 @@ export const ZOMBIE_CONFIG = {
     minPlayers: 5,
 };
 
-export interface ZombieRoundEndResult {
-    message: string;
-    allZombies: boolean;
-}
-
 export function handleZombieRoundEnd(
     players: Map<string, Player>,
-): ZombieRoundEndResult {
+): GameOverResult {
     // Zombie mode: count tags and non-tags
-    const tags = [...players.values()].filter((p) => p.isTag);
     const nonTags = [...players.values()].filter((p) => !p.isTag);
 
-    let message: string;
     if (nonTags.length > 0) {
-        // Non-tags win
-        const winnerNames = nonTags.map((p) => p.name).join(", ");
-        message = `Temps écoulé! Les survivants gagnent: ${winnerNames}.`;
-    } else if (tags.length > 0) {
-        // All are tags, those who transformed someone win
-        const winnersWithTransform = tags.filter(
-            (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
-        );
-        if (winnersWithTransform.length > 0) {
-            const winnerNames = winnersWithTransform.map((p) => p.name).join(", ");
-            message = `Apocalypse zombie! Gagnants (qui ont transformé): ${winnerNames}.`;
-        } else {
-            message = `Apocalypse zombie! Mode de fin indéfini.`;
-        }
-    } else {
-        message = `Fins de temps: pas de gagnants identifiés.`;
+        // Non-tags win (time ran out)
+        const winners = nonTags.map((p) => ({
+            id: p.id,
+            name: p.name,
+        }));
+        return {
+            mode: 'zombie',
+            reason: 'Les survivants ont tenu jusqu\'à la fin du temps!',
+            winners,
+        };
     }
 
-    return { message, allZombies: false };
+    // All are tags, those who transformed someone win
+    const tags = [...players.values()];
+    const winnersWithTransform = tags.filter(
+        (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
+    );
+
+    const winners = winnersWithTransform.map((p) => ({
+        id: p.id,
+        name: p.name,
+    }));
+
+    return {
+        mode: 'zombie',
+        reason: winnersWithTransform.length > 0 
+            ? 'Apocalypse zombie! Les infecteurs ont gagné!' 
+            : 'Apocalypse zombie. Aucun infecteur ne pouvait être identifié.',
+        winners,
+    };
 }
 
 export function handleZombieAllTagsGameOver(
     players: Map<string, Player>,
-): string {
+): GameOverResult {
     const winnersWithTransform = [...players.values()].filter(
         (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
     );
-    const winnerNames = winnersWithTransform.length > 0 
-        ? winnersWithTransform.map((p) => p.name).join(", ")
-        : "personne";
-    return `Apocalypse zombie! Tous sont devenus tags. Gagnants (qui ont transformé): ${winnerNames}.`;
+    
+    const winners = winnersWithTransform.map((p) => ({
+        id: p.id,
+        name: p.name,
+    }));
+
+    return {
+        mode: 'zombie',
+        reason: winnersWithTransform.length > 0
+            ? 'Tous les joueurs sont devenus des zombies! Les infecteurs ont gagné!'
+            : 'Tous les joueurs sont devenus des zombies!',
+        winners,
+    };
 }
 
 export function getZombieSpeed(

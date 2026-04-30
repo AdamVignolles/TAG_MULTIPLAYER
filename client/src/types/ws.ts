@@ -46,12 +46,26 @@ export type StateMessage = {
   tiles: TileView[]
 }
 
+export type GameOverResult = {
+  mode: GameMode
+  reason: string
+  winners: {
+    id: string
+    name: string
+  }[]
+  loser?: {
+    id: string
+    name: string
+  }
+}
+
 export type ServerMessage =
   | { type: 'hello'; message: string }
   | { type: 'joined'; role: Role; playerId?: string; name?: string }
   | { type: 'error'; message: string }
   | { type: 'tag_event'; from: string; to: string }
   | { type: 'game_over'; message: string }
+  | { type: 'game_over_result'; result: GameOverResult }
   | { type: 'game_started'; mode: GameMode }
   | LobbyMessage
   | StateMessage

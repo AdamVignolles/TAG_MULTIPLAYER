@@ -1,4 +1,5 @@
 import type { Player } from "../index.ts";
+import type { GameOverResult } from "./GameOverResult.ts";
 
 export const CLASSIC_CONFIG = {
     label: "Classique",
@@ -6,22 +7,30 @@ export const CLASSIC_CONFIG = {
     tagSpeedBonus: 18,
     gravity: 1100,
     jumpForce: 480,
-    baseRoundDurationMs: 180000,
+    baseRoundDurationMs: 180,
     minPlayers: 2,
 };
 
 export function handleClassicRoundEnd(
     tagPlayerId: string | null,
     players: Map<string, Player>,
-): string {
+): GameOverResult {
     // Classic mode: tag loses, others win
     const loserId = tagPlayerId;
-    const loserName = loserId ? players.get(loserId)?.name ?? "Inconnu" : "Inconnu";
+    const loser = loserId ? players.get(loserId) : null;
     const winners = [...players.values()]
         .filter((player) => player.id !== loserId)
-        .map((player) => player.name);
-    const winnersText = winners.length > 0 ? winners.join(", ") : "personne";
-    return `${loserName} est TAG à la fin du temps : il perd. Gagnants: ${winnersText}.`;
+        .map((player) => ({
+            id: player.id,
+            name: player.name,
+        }));
+
+    return {
+        mode: 'classic',
+        reason: 'Le TAG est le perdant à la fin du temps.',
+        winners,
+        loser: loser ? { id: loser.id, name: loser.name } : undefined,
+    };
 }
 
 export function getClassicSpeed(

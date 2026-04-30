@@ -1324,3 +1324,85 @@ button {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(217, 138, 47, 0.3);
 }
+
+/* Winners display */
+.game-over-reason {
+  font-size: 1.3rem;
+  color: #5f2f0e;
+  font-weight: 500;
+  line-height: 1.6;
+  word-break: break-word;
+  margin: 1rem 0;
+}
+
+.game-over-winners {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  margin: 2rem 0;
+}
+
+.winners-label {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #d98a2f;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.winners-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(217, 138, 47, 0.1);
+  border-radius: 12px;
+}
+
+.game-over-winners.bomb-mode .winners-list {
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+.winner-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #d98a2f 0%, #c97a1f 100%);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(217, 138, 47, 0.3);
+  min-width: 180px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.winner-name {
+  word-break: break-word;
+}
+
+.game-over-loser {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.5rem;
+  background: rgba(200, 80, 80, 0.1);
+  border-radius: 12px;
+  border-left: 4px solid #c85050;
+}
+
+.loser-label {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #c85050;
+}
+
+.loser-name {
+  font-size: 1.3rem;
+  color: #5f2f0e;
+  font-weight: 600;
+}

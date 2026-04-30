@@ -1,4 +1,5 @@
 import type { Player } from "../index.ts";
+import type { GameOverResult } from "./GameOverResult.ts";
 
 export const BOMB_CONFIG = {
     label: "Bombe",
@@ -73,9 +74,10 @@ export function updateBombMode(
     players: Map<string, Player>,
     bombTagPlayerIds: Set<string>,
     broadcast: (msg: any) => void,
-): void {
-    // Update bomb counters for TAG players
-    for (const tagId of bombTagPlayerIds) {
+): GameOverResult | null {
+    // Update bomb counters for TAG players and eliminate when counter reaches 0
+    const tagsToProcess = [...bombTagPlayerIds];
+    for (const tagId of tagsToProcess) {
         const tagPlayer = players.get(tagId);
         if (!tagPlayer || tagPlayer.isEliminated) continue;
         
@@ -83,30 +85,38 @@ export function updateBombMode(
         tagPlayer.bombCounter = Math.max(0, tagPlayer.bombCounter - dt);
         
         // Check if bomb counter reaches 0
-        if (tagPlayer.bombCounter <= 0 && !tagPlayer.isEliminated) {
+        if (tagPlayer.bombCounter <= 0) {
             tagPlayer.isEliminated = true;
             broadcast({
                 type: "tag_event",
                 from: "Bombe",
                 to: tagPlayer.name,
             });
-        }
-    }
-    
-    // Check win/loss conditions
-    const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
-    const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
-    const tagPlayers = nonEliminatedPlayers.filter(p => p.isTag);
-    
-    // If non-TAG players > TAG players and a TAG is eliminated, reassign a new TAG
-    if (nonTagPlayers.length > tagPlayers.length && nonTagPlayers.length > 0) {
-        // Find an eliminated TAG
-        const eliminatedTag = [...bombTagPlayerIds].find(id => players.get(id)?.isEliminated);
-        if (eliminatedTag) {
-            // Pick a random non-TAG to become TAG
-            const newTagPlayer = nonTagPlayers[Math.floor(Math.random() * nonTagPlayers.length)];
-            if (newTagPlayer) {
-                bombTagPlayerIds.delete(eliminatedTag);
+            
+            // After elimination, check if we need to assign a new TAG
+            const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
+            const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
+            const tagPlayers = nonEliminatedPlayers.filter(p => p.isTag);
+            
+            // Check if only one player left (immediate win condition)
+            if (nonEliminatedPlayers.length === 1) {
+                const survivor = nonEliminatedPlayers[0];
+                const gameOverResult: GameOverResult = {
+                    mode: 'bomb',
+                    reason: `${survivor.name} est le dernier survivant!`,
+                    winners: [{
+                        id: survivor.id,
+                        name: survivor.name,
+                    }],
+                };
+                return gameOverResult;
+            }
+            
+            // If non-TAG > TAG, assign a new TAG to a random non-TAG player
+            if (nonTagPlayers.length > tagPlayers.length && nonTagPlayers.length > 0) {
+                bombTagPlayerIds.delete(tagId);
+                const newTagPlayer = nonTagPlayers[Math.floor(Math.random() * nonTagPlayers.length)];
+                
                 bombTagPlayerIds.add(newTagPlayer.id);
                 newTagPlayer.isTag = true;
                 const newBombCounter = getBombCounterForPlayerCount(nonEliminatedPlayers.length);
@@ -118,31 +128,44 @@ export function updateBombMode(
                     from: "Système",
                     to: newTagPlayer.name,
                 });
+            } else {
+                // No new TAG assigned, just remove the eliminated TAG from the set
+                bombTagPlayerIds.delete(tagId);
             }
         }
     }
     
     // Check loss condition: all non-TAG players eliminated
+    const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
+    const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
+    
     if (nonTagPlayers.length === 0 && nonEliminatedPlayers.length > 0) {
         broadcast({
             type: "game_over",
             message: "Tous les joueurs ont été éliminés!",
         });
     }
-}
-
-export interface BombRoundEndResult {
-    message: string;
+    
+    return null;
 }
 
 export function handleBombRoundEnd(
     players: Map<string, Player>,
-): BombRoundEndResult {
+): GameOverResult {
     const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
     const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
     const winner = nonTagPlayers.length === 1 ? nonTagPlayers[0] : null;
-    const message = winner ? `${winner.name} a gagné!` : "Fin de partie";
-    return { message };
+    
+    const winners = winner ? [{
+        id: winner.id,
+        name: winner.name,
+    }] : [];
+
+    return {
+        mode: 'bomb',
+        reason: winner ? `${winner.name} est le dernier survivant!` : 'Fin de partie.',
+        winners,
+    };
 }
 
 export function handleBombTransfer(

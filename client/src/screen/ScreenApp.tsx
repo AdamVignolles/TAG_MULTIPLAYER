@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView } from '../types/ws'
+import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView, GameOverResult } from '../types/ws'
 import { getSpriteUrl } from '../utils/characterManager'
 import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached } from '../utils/rulesGameMode'
 
@@ -93,7 +93,7 @@ export function ScreenApp() {
     started: false,
   })
   const [gameState, setGameState] = useState<StateMessage | null>(null)
-  const [gameOverMessage, setGameOverMessage] = useState<string | null>(null)
+  const [gameOverResult, setGameOverResult] = useState<GameOverResult | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
   const controllerUrl = useMemo(
@@ -170,11 +170,13 @@ export function ScreenApp() {
                 return
               }
 
+              if (data.type === 'game_over_result') {
+                setGameOverResult(data.result)
+                return
+              }
+
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
-                if (data.type === 'game_over') {
-                  setGameOverMessage(data.message)
-                }
               }
             } catch (error) {
               console.error('ws message parse error', error)
@@ -223,7 +225,7 @@ export function ScreenApp() {
   function goHome() {
     setLobby((prev) => ({ ...prev, started: false }))
     setGameState(null)
-    setGameOverMessage(null)
+    setGameOverResult(null)
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'stop_game' }))
@@ -359,7 +361,11 @@ export function ScreenApp() {
   const playerCount = gameState?.players.length ?? lobby.connectedPlayers
 
   // Game over screen
-  if (gameOverMessage) {
+  if (gameOverResult) {
+    const modeLabel = MODE_LABEL[gameOverResult.mode]
+    const isBombMode = gameOverResult.mode === 'bomb'
+    const winnersCount = gameOverResult.winners.length
+
     return (
       <main className="screen-layout game-screen">
         <header className="game-hud">
@@ -380,7 +386,7 @@ export function ScreenApp() {
             </div>
             <div className="hud-pill">
               <span className="hud-pill-label">Mode</span>
-              <strong>{MODE_LABEL[lobby.mode]}</strong>
+              <strong>{modeLabel}</strong>
             </div>
             <div className="hud-pill">
               <span className="hud-pill-label">Temps</span>
@@ -396,9 +402,32 @@ export function ScreenApp() {
         <section className="game-over-screen">
           <div className="game-over-container">
             <h1 className="game-over-title">🎉 Partie Terminée! 🎉</h1>
-            <div className="game-over-message">
-              {gameOverMessage}
+            
+            <div className="game-over-reason">
+              <p>{gameOverResult.reason}</p>
             </div>
+
+            <div className={`game-over-winners ${isBombMode ? 'bomb-mode' : 'multi-winners'}`}>
+              <div className="winners-label">
+                {isBombMode ? '👑 Gagnant 👑' : `🏆 Gagnants (${winnersCount}) 🏆`}
+              </div>
+              
+              <div className="winners-list">
+                {gameOverResult.winners.map((winner) => (
+                  <div key={winner.id} className="winner-card">
+                    <div className="winner-name">{winner.name}</div>
+                  </div>
+                ))}
+              </div>
+
+              {gameOverResult.loser && (
+                <div className="game-over-loser">
+                  <div className="loser-label">💔 Perdant 💔</div>
+                  <div className="loser-name">{gameOverResult.loser.name}</div>
+                </div>
+              )}
+            </div>
+
             <button className="home-button-large" onClick={goHome}>
               Retour à l'accueil
             </button>
@@ -465,7 +494,9 @@ export function ScreenApp() {
           )
         })}
 
-        {(gameState?.players ?? []).map((player) => {
+        {(gameState?.players ?? [])
+          .filter(player => !(gameState?.mode === 'bomb' && player.isEliminated))
+          .map((player) => {
           const isTag = gameState?.mode === 'zombie' ? player.isTag : (gameState?.mode === 'bomb' ? player.isTag : gameState?.tagPlayerId === player.id)
           const spriteSize = 32
           const frameIndex = getAnimationFrame(player)

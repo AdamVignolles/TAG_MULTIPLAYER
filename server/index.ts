@@ -16,6 +16,7 @@ import {
     ZOMBIE_CONFIG,
 } from "./Modes/zombie.ts";
 import { BOMB_CONFIG, getBombCounterForPlayerCount, getInitialTagCountForPlayerCount, initBombMode, updateBombMode, handleBombRoundEnd, handleBombTransfer } from "./Modes/bomb.ts";
+import type { GameOverResult } from "./Modes/GameOverResult.ts";
 
 type Role = "screen" | "controller";
 type GameMode = "classic" | "zombie" | "bomb";
@@ -270,22 +271,18 @@ function resetRoundIfNeeded() {
         return;
     }
 
-    let message: string;
+    let gameOverResult: GameOverResult;
     if (gameMode === "zombie") {
-        const result = handleZombieRoundEnd(players);
-        message = result.message;
+        gameOverResult = handleZombieRoundEnd(players);
     } else if (gameMode === "bomb") {
-        const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
-        const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
-        const winner = nonTagPlayers.length === 1 ? nonTagPlayers[0] : null;
-        message = winner ? `${winner.name} a gagné!` : "Fin de partie";
+        gameOverResult = handleBombRoundEnd(players);
     } else {
-        message = handleClassicRoundEnd(tagPlayerId, players);
+        gameOverResult = handleClassicRoundEnd(tagPlayerId, players);
     }
 
     broadcast({
-        type: "game_over",
-        message,
+        type: "game_over_result",
+        result: gameOverResult,
     });
 
     players.forEach((player) => {
@@ -527,17 +524,24 @@ function updateGame(dt: number) {
         // Check if all players are tags - immediate game over
         if (checkZombieAllTagsGameOver(players)) {
             gameStarted = false;
-            const message = handleZombieAllTagsGameOver(players);
+            const gameOverResult = handleZombieAllTagsGameOver(players);
             broadcast({
-                type: "game_over",
-                message,
+                type: "game_over_result",
+                result: gameOverResult,
             });
         }
     }
 
     // Bomb mode: handle bomb counters and eliminations
         if (gameMode === "bomb") {
-            updateBombMode(dt, players, bombTagPlayerIds, broadcast);
+            const bombGameOver = updateBombMode(dt, players, bombTagPlayerIds, broadcast);
+            if (bombGameOver) {
+                gameStarted = false;
+                broadcast({
+                    type: "game_over_result",
+                    result: bombGameOver,
+                });
+            }
         }
 
     resetRoundIfNeeded();
