@@ -4,7 +4,7 @@ import type { GameOverResult } from "./GameOverResult.ts";
 export const BOMB_CONFIG = {
     label: "Bombe",
     baseSpeed: 240,
-    tagSpeedBonus: 14,
+    tagSpeedBonus: 20,
     gravity: 1100,
     jumpForce: 480,
     minPlayers: 2,

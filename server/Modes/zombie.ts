@@ -10,7 +10,7 @@ export const ZOMBIE_CONFIG = {
     gravity: 1100,
     jumpForce: 480,
     baseRoundDurationMs: 45000,
-    minPlayers: 4,
+    minPlayers: 3,
 };
 
 export function handleZombieRoundEnd(

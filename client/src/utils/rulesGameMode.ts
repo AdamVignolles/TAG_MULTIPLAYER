@@ -19,7 +19,7 @@ const modeDescriptions: Record<string, ModeDescription> = {
       'Jeu très similaire au jeu du chat',
       'Un seul joueur commence en tant que TAG (poursuivant)',
       'Le joueur TAG doit toucher un autre joueur pour lui transférer le statut.',
-      'Le joueur qui est TAG à la fin du temps imparti (60 secondes) perd',
+      'Le joueur qui est TAG à la fin du temps imparti perd',
       'Les autres joueurs ont gagnés',
     ],
   },
@@ -71,7 +71,7 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
       duree: '30/60 sec',
       gagnant: '1+',
       tag: '1+',
-      minPlayers: 4,
+      minPlayers: 3,
     },
     bomb: {
       duree: '~ 3 min',

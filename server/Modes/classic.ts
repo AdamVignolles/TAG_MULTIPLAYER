@@ -4,7 +4,7 @@ import type { GameOverResult } from "./GameOverResult.ts";
 export const CLASSIC_CONFIG = {
     label: "Classique",
     baseSpeed: 220,
-    tagSpeedBonus: 18,
+    tagSpeedBonus: 20,
     gravity: 1100,
     jumpForce: 480,
     baseRoundDurationMs: 150000,
