@@ -105,23 +105,33 @@ export function updateBombMode(
             // Check if only one player left (immediate win condition)
             if (nonEliminatedPlayers.length === 1) {
                 const survivor = nonEliminatedPlayers[0];
+                const winnersList = [{
+                    id: survivor.id,
+                    name: survivor.name,
+                }];
+                const winnerIds = new Set(winnersList.map((winner) => winner.id));
+                const losersList = [...players.values()]
+                    .filter((player) => !winnerIds.has(player.id))
+                    .map((player) => ({
+                        id: player.id,
+                        name: player.name,
+                    }));
                 const gameOverResult: GameOverResult = {
                     mode: 'bomb',
                     reason: `${survivor.name} est le dernier survivant!`,
-                    winners: [{
-                        id: survivor.id,
-                        name: survivor.name,
-                    }],
+                    winners: winnersList,
+                    winnersList,
+                    losersList,
                     winnerId: survivor.id,
                 };
                 return gameOverResult;
             }
-            
+
             // If non-TAG > TAG, assign a new TAG to a random non-TAG player
             if (nonTagPlayers.length > tagPlayers.length && nonTagPlayers.length > 0) {
                 bombTagPlayerIds.delete(tagId);
                 const newTagPlayer = nonTagPlayers[Math.floor(Math.random() * nonTagPlayers.length)];
-                
+
                 bombTagPlayerIds.add(newTagPlayer.id);
                 newTagPlayer.isTag = true;
                 const newBombCounter = getBombCounterForPlayerCount(nonEliminatedPlayers.length);
@@ -139,18 +149,33 @@ export function updateBombMode(
             }
         }
     }
-    
+
     // Check loss condition: all non-TAG players eliminated
     const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
     const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
-    
+
     if (nonTagPlayers.length === 0 && nonEliminatedPlayers.length > 0) {
-        broadcast({
-            type: "game_over",
-            message: "Tous les joueurs ont été éliminés!",
-        });
+        const winnersList = nonEliminatedPlayers.map((player) => ({
+            id: player.id,
+            name: player.name,
+        }));
+        const winnerIds = new Set(winnersList.map((entry) => entry.id));
+        const losersList = [...players.values()]
+            .filter((player) => !winnerIds.has(player.id))
+            .map((player) => ({
+                id: player.id,
+                name: player.name,
+            }));
+
+        return {
+            mode: 'bomb',
+            reason: 'Tous les joueurs ont été éliminés!',
+            winners: winnersList,
+            winnersList,
+            losersList,
+        };
     }
-    
+
     return null;
 }
 
@@ -159,17 +184,32 @@ export function handleBombRoundEnd(
 ): GameOverResult {
     const nonEliminatedPlayers = [...players.values()].filter(p => !p.isEliminated);
     const nonTagPlayers = nonEliminatedPlayers.filter(p => !p.isTag);
-    const winner = nonTagPlayers.length === 1 ? nonTagPlayers[0] : null;
-    
-    const winners = winner ? [{
-        id: winner.id,
-        name: winner.name,
-    }] : [];
+    const winnersList = nonTagPlayers.length > 0
+        ? nonTagPlayers.map((player) => ({
+            id: player.id,
+            name: player.name,
+        }))
+        : nonEliminatedPlayers.map((player) => ({
+            id: player.id,
+            name: player.name,
+        }));
+
+    const winnerIds = new Set(winnersList.map((entry) => entry.id));
+    const losersList = [...players.values()]
+        .filter((player) => !winnerIds.has(player.id))
+        .map((player) => ({
+            id: player.id,
+            name: player.name,
+        }));
 
     return {
         mode: 'bomb',
-        reason: winner ? `${winner.name} est le dernier survivant!` : 'Fin de partie.',
-        winners,
+        reason: winnersList.length === 1
+            ? `${winnersList[0].name} est le dernier survivant!`
+            : 'Fin de partie.',
+        winners: winnersList,
+        winnersList,
+        losersList,
     };
 }
 

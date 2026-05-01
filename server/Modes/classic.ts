@@ -18,17 +18,20 @@ export function handleClassicRoundEnd(
     // Classic mode: tag loses, others win
     const loserId = tagPlayerId;
     const loser = loserId ? players.get(loserId) : null;
-    const winners = [...players.values()]
+    const winnersList = [...players.values()]
         .filter((player) => player.id !== loserId)
         .map((player) => ({
             id: player.id,
             name: player.name,
         }));
+    const losersList = loser ? [{ id: loser.id, name: loser.name }] : [];
 
     return {
         mode: 'classic',
         reason: 'Le TAG est le perdant à la fin du temps.',
-        winners,
+        winners: winnersList,
+        winnersList,
+        losersList,
         loser: loser ? { id: loser.id, name: loser.name } : undefined,
     };
 }

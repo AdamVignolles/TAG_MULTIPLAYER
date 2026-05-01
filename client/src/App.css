@@ -1373,8 +1373,8 @@ button {
   align-items: center;
   justify-content: center;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #d98a2f 0%, #c97a1f 100%);
-  color: white;
+  background: linear-gradient(135deg, #ff8800 0%, #1fb5c9 100%);
+  color: rgb(0, 0, 0);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(217, 138, 47, 0.3);
   min-width: 180px;
@@ -1384,6 +1384,13 @@ button {
   letter-spacing: 0.5px;
 }
 
+.winner-card.loser {
+  background: #283a2c !important;
+  box-shadow: 0 4px 12px rgba(200, 80, 80, 0.3);
+  padding: 0.5rem 0.5rem;
+  min-width: 120px;
+
+}
 .winner-name {
   word-break: break-word;
 }
@@ -1406,6 +1413,6 @@ button {
 
 .loser-name {
   font-size: 1.3rem;
-  color: #5f2f0e;
+  color: #acacac;
   font-weight: 600;
 }

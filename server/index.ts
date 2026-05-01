@@ -285,35 +285,8 @@ function resetRoundIfNeeded() {
         type: "game_over_result",
         result: gameOverResult,
     });
-
-    players.forEach((player) => {
-        player.x = 120 + ((Math.random() * 600) | 0);
-        player.y = FLOOR_Y;
-        player.vx = 0;
-        player.vy = 0;
-        player.onGround = true;
-        player.jumpsLeft = MAX_JUMPS;
-        player.input.left = false;
-        player.input.right = false;
-        player.input.jump = false;
-        player.input.down = false;
-        player.isTag = false;
-        player.transformationStartTime = null;
-        player.transformedFrom = null;
-        player.isEliminated = false;
-    });
-
+    gameStarted = false;
     roundStartTs = Date.now();
-    if (gameMode === "zombie") {
-        roundDurationMs = calculateZombieDuration(players.size);
-    } else if (gameMode === "bomb") {
-        initBombMode(players, bombTagPlayerIds);
-    }
-    tagPlayerId = pickRandomPlayerId();
-    if (tagPlayerId && gameMode === "zombie") {
-        players.get(tagPlayerId)!.isTag = true;
-    }
-    lastTagTs = Date.now();
 }
 
 function updateGame(dt: number) {

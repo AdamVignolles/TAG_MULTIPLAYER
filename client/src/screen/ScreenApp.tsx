@@ -373,7 +373,9 @@ export function ScreenApp() {
   if (gameOverResult) {
     const modeLabel = MODE_LABEL[gameOverResult.mode]
     const isBombMode = gameOverResult.mode === 'bomb'
-    const winnersCount = gameOverResult.winners.length
+    const winnersList = gameOverResult.winnersList ?? gameOverResult.winners
+    const losersList = gameOverResult.losersList ?? (gameOverResult.loser ? [gameOverResult.loser] : [])
+    const winnersCount = winnersList.length
 
     return (
       <main className="screen-layout game-screen">
@@ -422,17 +424,23 @@ export function ScreenApp() {
               </div>
               
               <div className="winners-list">
-                {gameOverResult.winners.map((winner) => (
+                {winnersList.map((winner) => (
                   <div key={winner.id} className="winner-card">
                     <div className="winner-name">{winner.name}</div>
                   </div>
                 ))}
               </div>
 
-              {gameOverResult.loser && (
+              {losersList.length > 0 && (
                 <div className="game-over-loser">
-                  <div className="loser-label">💔 Perdant 💔</div>
-                  <div className="loser-name">{gameOverResult.loser.name}</div>
+                  <div className="loser-label">💔 Perdants 💔</div>
+                  <div className="winners-list">
+                    {losersList.map((loser) => (
+                      <div key={loser.id} className="winner-card loser">
+                        <div className="loser-name">{loser.name}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

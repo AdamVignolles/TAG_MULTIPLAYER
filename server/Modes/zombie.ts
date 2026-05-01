@@ -21,14 +21,23 @@ export function handleZombieRoundEnd(
 
     if (nonTags.length > 0) {
         // Non-tags win (time ran out)
-        const winners = nonTags.map((p) => ({
+        const winnersList = nonTags.map((p) => ({
             id: p.id,
             name: p.name,
         }));
+        const winnerIds = new Set(winnersList.map((winner) => winner.id));
+        const losersList = [...players.values()]
+            .filter((player) => !winnerIds.has(player.id))
+            .map((player) => ({
+                id: player.id,
+                name: player.name,
+            }));
         return {
             mode: 'zombie',
             reason: 'Les survivants ont tenu jusqu\'à la fin du temps!',
-            winners,
+            winners: winnersList,
+            winnersList,
+            losersList,
         };
     }
 
@@ -38,17 +47,26 @@ export function handleZombieRoundEnd(
         (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
     );
 
-    const winners = winnersWithTransform.map((p) => ({
+    const winnersList = winnersWithTransform.map((p) => ({
         id: p.id,
         name: p.name,
     }));
+    const winnerIds = new Set(winnersList.map((winner) => winner.id));
+    const losersList = [...players.values()]
+        .filter((player) => !winnerIds.has(player.id))
+        .map((player) => ({
+            id: player.id,
+            name: player.name,
+        }));
 
     return {
         mode: 'zombie',
         reason: winnersWithTransform.length > 0 
             ? 'Apocalypse zombie! Les infecteurs ont gagné!' 
             : 'Apocalypse zombie. Aucun infecteur ne pouvait être identifié.',
-        winners,
+        winners: winnersList,
+        winnersList,
+        losersList,
     };
 }
 
@@ -59,17 +77,26 @@ export function handleZombieAllTagsGameOver(
         (t) => [...players.values()].some((p) => p.transformedFrom === t.id)
     );
     
-    const winners = winnersWithTransform.map((p) => ({
+    const winnersList = winnersWithTransform.map((p) => ({
         id: p.id,
         name: p.name,
     }));
+    const winnerIds = new Set(winnersList.map((winner) => winner.id));
+    const losersList = [...players.values()]
+        .filter((player) => !winnerIds.has(player.id))
+        .map((player) => ({
+            id: player.id,
+            name: player.name,
+        }));
 
     return {
         mode: 'zombie',
         reason: winnersWithTransform.length > 0
             ? 'Tous les joueurs sont devenus des zombies! Les infecteurs ont gagné!'
             : 'Tous les joueurs sont devenus des zombies!',
-        winners,
+        winners: winnersList,
+        winnersList,
+        losersList,
     };
 }
 

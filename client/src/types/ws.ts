@@ -53,6 +53,14 @@ export type GameOverResult = {
     id: string
     name: string
   }[]
+  winnersList: {
+    id: string
+    name: string
+  }[]
+  losersList: {
+    id: string
+    name: string
+  }[]
   loser?: {
     id: string
     name: string
