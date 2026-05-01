@@ -7,7 +7,6 @@ export const BOMB_CONFIG = {
     tagSpeedBonus: 14,
     gravity: 1100,
     jumpForce: 480,
-    baseRoundDurationMs: 90000,
     minPlayers: 2,
 };
 
@@ -122,7 +121,6 @@ export function updateBombMode(
                     winners: winnersList,
                     winnersList,
                     losersList,
-                    winnerId: survivor.id,
                 };
                 return gameOverResult;
             }

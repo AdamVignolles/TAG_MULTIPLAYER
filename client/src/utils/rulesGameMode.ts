@@ -39,7 +39,7 @@ const modeDescriptions: Record<string, ModeDescription> = {
     title: 'Bombe',
     description: 'Passez-la avant qu\'elle n\'explose!',
     rules: [
-      'Chaque joueur possède un compteur personnel de 10 secondes (visible sur son controleur)',
+      'Chaque joueur possède un compteur personnel de 12 à 40s selon le nombre de joueurs (visible sur son controleur)',
       'Au début de la partie, un à plusieurs joueurs sont désignés aléatoirement comme TAG (porteurs de la bombe) selon le nombre de joueurs',
       'Chaque seconde passée en tant que TAG réduit le compteur.',
       'Le joueur qui voit son compteur atteindre zéro perd la partie (la bombe explose)',
@@ -62,7 +62,7 @@ export const getModeRules = (mode: string) => {
 export const getGameStats = (mode: string, playerCount: number): GameStats => {
   const statsMap: Record<string, GameStats> = {
     classic: {
-      duree: '3 min',
+      duree: '2:30 min',
       gagnant: playerCount <= 2 ? '1+' : playerCount - 1,
       tag: '1',
       minPlayers: 2,

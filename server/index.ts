@@ -128,7 +128,7 @@ const MODE_CONFIG: Record<GameMode, {
     tagSpeedBonus: number;
     gravity: number;
     jumpForce: number;
-    baseRoundDurationMs: number;
+    baseRoundDurationMs?: number;
     minPlayers: number;
 }> = {
     classic: CLASSIC_CONFIG,
@@ -671,9 +671,11 @@ wss.on("connection", (ws: WebSocket) => {
             // Calculate round duration based on mode
             if (gameMode === "zombie") {
                 roundDurationMs = calculateZombieDuration(players.size);
+            } else if (gameMode === "bomb") {
+                roundDurationMs = Number.POSITIVE_INFINITY;
             } else {
                 const mode = MODE_CONFIG[gameMode];
-                roundDurationMs = mode.baseRoundDurationMs;
+                roundDurationMs = mode.baseRoundDurationMs ?? roundDurationMs;
             }
 
             tagPlayerId = pickRandomPlayerId();

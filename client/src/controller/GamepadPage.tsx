@@ -85,6 +85,7 @@ export function GamepadPage({
       }
     }
   }
+
   return (
     <main className="controller-layout gamepad" ref={containerRef} onTouchStart={handleProximityTouchStart}>
 
@@ -109,7 +110,7 @@ export function GamepadPage({
             <div className={`status-dot ${playerTagState === 'TAG' ? 'tag' : 'free'}`}></div>
             {playerTagState}
         </div>
-        
+
         <div className="top-buttons-right">
           {bombTimer !== null && (
             <span style={{ 

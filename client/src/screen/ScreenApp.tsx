@@ -27,6 +27,10 @@ function getAnimationFrame(player: PlayerView): number {
 }
 
 function formatTime(ms: number) {
+  if (!Number.isFinite(ms)) {
+    return '∞'
+  }
+
   const sec = Math.ceil(ms / 1000)
   const m = Math.floor(sec / 60)
   const s = sec % 60
@@ -83,7 +87,7 @@ const TILE_DESCRIPTIONS: Record<string, { name: string; description: string; cla
 
 export function ScreenApp() {
   const [status, setStatus] = useState('Deconnecte')
-  const [log, setLog] = useState('')
+  const [, setLog] = useState('')
   const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
   const [lobby, setLobby] = useState<LobbyMessage>({
     type: 'lobby',
@@ -374,7 +378,7 @@ export function ScreenApp() {
     const modeLabel = MODE_LABEL[gameOverResult.mode]
     const isBombMode = gameOverResult.mode === 'bomb'
     const winnersList = gameOverResult.winnersList ?? gameOverResult.winners
-    const losersList = gameOverResult.losersList ?? (gameOverResult.loser ? [gameOverResult.loser] : [])
+    const losersList = gameOverResult.losersList
     const winnersCount = winnersList.length
 
     return (
@@ -399,10 +403,12 @@ export function ScreenApp() {
               <span className="hud-pill-label">Mode</span>
               <strong>{modeLabel}</strong>
             </div>
-            <div className="hud-pill">
-              <span className="hud-pill-label">Temps</span>
-              <strong>{formatTime(gameState?.remainingMs ?? 0)}</strong>
-            </div>
+            {!isBombMode && (
+              <div className="hud-pill">
+                <span className="hud-pill-label">Temps</span>
+                <strong>{formatTime(gameState?.remainingMs ?? 0)}</strong>
+              </div>
+            )}
             <div className="hud-pill">
               <span className="hud-pill-label">Joueurs</span>
               <strong>{playerCount}</strong>
@@ -476,10 +482,12 @@ export function ScreenApp() {
             <span className="hud-pill-label">Mode</span>
             <strong>{MODE_LABEL[lobby.mode]}</strong>
           </div>
-          <div className="hud-pill">
-            <span className="hud-pill-label">Temps</span>
-            <strong>{formatTime(gameState?.remainingMs ?? 0)}</strong>
-          </div>
+          {lobby.mode !== 'bomb' && (
+            <div className="hud-pill">
+              <span className="hud-pill-label">Temps</span>
+              <strong>{formatTime(gameState?.remainingMs ?? 0)}</strong>
+            </div>
+          )}
           <div className="hud-pill">
             <span className="hud-pill-label">Joueurs</span>
             <strong>{playerCount}</strong>
@@ -546,8 +554,6 @@ export function ScreenApp() {
           )
         })}
       </section>
-
-      <footer className="log game-log">{log || 'Partie en cours.'}</footer>
     </main>
   )
 }

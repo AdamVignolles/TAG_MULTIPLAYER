@@ -7,7 +7,7 @@ export const CLASSIC_CONFIG = {
     tagSpeedBonus: 18,
     gravity: 1100,
     jumpForce: 480,
-    baseRoundDurationMs: 1800,
+    baseRoundDurationMs: 150000,
     minPlayers: 2,
 };
 
@@ -32,7 +32,6 @@ export function handleClassicRoundEnd(
         winners: winnersList,
         winnersList,
         losersList,
-        loser: loser ? { id: loser.id, name: loser.name } : undefined,
     };
 }
 
