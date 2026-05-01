@@ -71,7 +71,7 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
       duree: '30/60 sec',
       gagnant: '1+',
       tag: '1+',
-      minPlayers: 5,
+      minPlayers: 4,
     },
     bomb: {
       duree: '~ 3 min',

@@ -120,6 +120,7 @@ const PLAYER_RADIUS = 16;
 const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
+const MAX_CONNECTED_PLAYERS = 200;
 
 const MODE_CONFIG: Record<GameMode, {
     label: string;
@@ -600,6 +601,11 @@ wss.on("connection", (ws: WebSocket) => {
                 const trimmedName = msg.name?.trim();
                 const existingPlayer = [...players.values()].find((player) => player.sessionId === sessionId);
 
+                if (!existingPlayer && players.size >= MAX_CONNECTED_PLAYERS) {
+                    send(ws, { type: "error", message: `Le serveur est plein (${MAX_CONNECTED_PLAYERS} joueurs maximum)` });
+                    return;
+                }
+
                 if (existingPlayer) {
                     const timer = disconnectedPlayerTimers.get(existingPlayer.id);
                     if (timer) {
@@ -666,6 +672,11 @@ wss.on("connection", (ws: WebSocket) => {
 
         if (msg.type === "start_game") {
             if (meta.role !== "screen") {
+                return;
+            }
+
+            if (players.size > MAX_CONNECTED_PLAYERS) {
+                send(ws, { type: "error", message: `Maximum ${MAX_CONNECTED_PLAYERS} joueurs autorisés` });
                 return;
             }
 

@@ -7,7 +7,7 @@ export const CLASSIC_CONFIG = {
     tagSpeedBonus: 18,
     gravity: 1100,
     jumpForce: 480,
-    baseRoundDurationMs: 180,
+    baseRoundDurationMs: 1800,
     minPlayers: 2,
 };
 

@@ -96,10 +96,19 @@ export function ScreenApp() {
   const [gameOverResult, setGameOverResult] = useState<GameOverResult | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
-  const controllerUrl = useMemo(
-    () => `${window.location.origin}${window.location.pathname}?role=controller`,
-    [],
-  )
+  const controllerUrl = useMemo(() => {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    
+    if (isLocalhost && import.meta.env.VITE_LOCAL_IP) {
+      // Si c'est local, utiliser l'IP du réseau local
+      const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
+      const port = window.location.port ? `:${window.location.port}` : ''
+      return `${protocol}://${import.meta.env.VITE_LOCAL_IP}${port}${window.location.pathname}?role=controller`
+    }
+    
+    // Sinon (Codespace, production, etc.), utiliser l'origin courant
+    return `${window.location.origin}${window.location.pathname}?role=controller`
+  }, [])
 
   useEffect(() => {
     const media = window.matchMedia('(orientation: portrait)')

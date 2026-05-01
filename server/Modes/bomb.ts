@@ -11,24 +11,28 @@ export const BOMB_CONFIG = {
     minPlayers: 2,
 };
 
-export const BOMB_GROUP = {
-    2: { initialTags: 1, initialCounter: 30 },
-    4: { initialTags: 1, initialCounter: 35 },
-    5: { initialTags: 1, initialCounter: 40 },
-    6: { initialTags: 2, initialCounter: 25 },
-    7: { initialTags: 2, initialCounter: 28 },
-    8: { initialTags: 2, initialCounter: 30 },
-    9: { initialTags: 2, initialCounter: 32 },
-    10: { initialTags: 3, initialCounter: 25 },
-} as const;
+export const BOMB_GROUP = [
+    { minPlayers: 2, maxPlayers: 3, initialTags: 1, initialCounter: 40 },
+    { minPlayers: 4, maxPlayers: 5, initialTags: 1, initialCounter: 35 },
+    { minPlayers: 6, maxPlayers: 8, initialTags: 2, initialCounter: 30 },
+    { minPlayers: 9, maxPlayers: 12, initialTags: 2, initialCounter: 25 },
+    { minPlayers: 13, maxPlayers: 20, initialTags: 3, initialCounter: 20 },
+    { minPlayers: 21, maxPlayers: 50, initialTags: 3, initialCounter: 15 },
+    { minPlayers: 51, maxPlayers: 100, initialTags: 4, initialCounter: 15 },
+    { minPlayers: 101, maxPlayers: 200, initialTags: 5, initialCounter: 12 },
+] as const;
+
+function getBombGroupConfig(playerCount: number) {
+    return BOMB_GROUP.find((group) => playerCount >= group.minPlayers && playerCount <= group.maxPlayers) || BOMB_GROUP[BOMB_GROUP.length - 1];
+}
 
 export function getBombCounterForPlayerCount(playerCount: number): number {
-    const config = BOMB_GROUP[playerCount as keyof typeof BOMB_GROUP] || BOMB_GROUP[10];
+    const config = getBombGroupConfig(playerCount);
     return config.initialCounter;
 }
 
 export function getInitialTagCountForPlayerCount(playerCount: number): number {
-    const config = BOMB_GROUP[playerCount as keyof typeof BOMB_GROUP] || BOMB_GROUP[10];
+    const config = getBombGroupConfig(playerCount);
     return config.initialTags;
 }
 
