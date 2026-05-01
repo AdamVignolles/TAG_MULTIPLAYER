@@ -68,6 +68,7 @@ export function ControllerApp() {
   const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE'>('FREE')
   const [playerColor, setPlayerColor] = useState<string | null>(null)
   const [bombTimer, setBombTimer] = useState<number | null>(null)
+  const [gameState, setGameState] = useState<{ countdownMs?: number } | null>(null)
   const [, setLog] = useState('')
   const [lobby, setLobby] = useState<LobbyMessage | null>(null)
 
@@ -178,6 +179,7 @@ export function ControllerApp() {
               }
 
               if (data.type === 'state') {
+                setGameState(data)
                 const currentPlayerId = playerIdRef.current
                 if (!currentPlayerId) return
 
@@ -203,6 +205,7 @@ export function ControllerApp() {
 
               if (data.type === 'game_over_result') {
                 setBombTimer(null)
+                setGameState(null)
                 // If this player is in the winner list, show waiting page
                 if (data.result.winnersList.some((winner) => winner.id === playerIdRef.current)) {
                   setGameOver(true)
@@ -213,6 +216,7 @@ export function ControllerApp() {
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
                 setBombTimer(null)
+                setGameState(null)
                 if (data.type === 'game_over') {
                   setGameOver(true)
                 }
@@ -227,8 +231,9 @@ export function ControllerApp() {
             wsRef.current = null
             playerIdRef.current = null
             setPlayerTagState('FREE')
-             setPlayerColor(null)
-             setBombTimer(null)
+            setPlayerColor(null)
+            setBombTimer(null)
+            setGameState(null)
           }
 
           ws.send(JSON.stringify({
@@ -358,6 +363,7 @@ export function ControllerApp() {
     setPlayerColor(null)
     sentColorForPlayerIdRef.current = null
     setGameOver(false)
+    setGameState(null)
   }
 
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
@@ -372,6 +378,9 @@ export function ControllerApp() {
       />
     )
   }
+
+  const isCountdown = (gameState?.countdownMs ?? 0) > 0
+  const controlsLocked = !gameState || isCountdown
 
   if (!lobby?.started || gameOver) {
     if (isPortrait) {
@@ -403,17 +412,20 @@ export function ControllerApp() {
       isFullscreen={isFullscreen}
       playerColor={playerColor}
       bombTimer={bombTimer}
+      controlsLocked={controlsLocked}
       onRequestFullscreen={requestFullscreen}
       left={left}
       right={right}
       jump={jump}
       down={down}
       onLeftPointerDown={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         activePointersRef.current.get('left')!.add(e.pointerId)
         setLeft(true)
       }}
       onLeftTouchStart={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         if (e.changedTouches.length > 0) {
           for (const touch of Array.from(e.changedTouches)) {
@@ -423,11 +435,13 @@ export function ControllerApp() {
         }
       }}
       onRightPointerDown={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         activePointersRef.current.get('right')!.add(e.pointerId)
         setRight(true)
       }}
       onRightTouchStart={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         if (e.changedTouches.length > 0) {
           for (const touch of Array.from(e.changedTouches)) {
@@ -437,11 +451,13 @@ export function ControllerApp() {
         }
       }}
       onJumpPointerDown={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         activePointersRef.current.get('jump')!.add(e.pointerId)
         setJump(true)
       }}
       onJumpTouchStart={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         if (e.changedTouches.length > 0) {
           for (const touch of Array.from(e.changedTouches)) {
@@ -451,11 +467,13 @@ export function ControllerApp() {
         }
       }}
       onDownPointerDown={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         activePointersRef.current.get('down')!.add(e.pointerId)
         setDown(true)
       }}
       onDownTouchStart={(e) => {
+        if (controlsLocked) return
         e.preventDefault()
         if (e.changedTouches.length > 0) {
           for (const touch of Array.from(e.changedTouches)) {

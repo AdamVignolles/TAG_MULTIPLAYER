@@ -41,6 +41,7 @@ export type StateMessage = {
   mode: GameMode
   arena: { width: number; height: number; floorY: number }
   remainingMs: number
+  countdownMs?: number
   tagPlayerId: string | null
   players: PlayerView[]
   tiles: TileView[]

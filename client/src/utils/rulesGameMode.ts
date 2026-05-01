@@ -33,6 +33,7 @@ const modeDescriptions: Record<string, ModeDescription> = {
       'Les ZOMBIES restent ZOMBIES pendant toute la partie',
       'Tous les survivants gagnents à la fin du temps imparti (60 secondes)',
       'Pour qu\'un ZOMBIE gagne, il doit transformer un autre joueur en ZOMBIE et que tous les joueurs soient des ZOMBIES à la fin du temps imparti',
+      'Ainsi, si un zombie transforme plusieurs joueurs en zombies, il réduit le nombre de gagnants finaux',
     ],
   },
   bomb: {

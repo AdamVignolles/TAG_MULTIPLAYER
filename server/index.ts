@@ -121,6 +121,7 @@ const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
 const MAX_CONNECTED_PLAYERS = 200;
+const GAME_START_COUNTDOWN_MS = 3000;
 
 const MODE_CONFIG: Record<GameMode, {
     label: string;
@@ -142,6 +143,44 @@ function getRandomCharacter(): CharacterType {
     return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
 }
 
+function shuffleArray<T>(items: T[]): T[] {
+    const shuffled = [...items];
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled;
+}
+
+function getSpawnTiles(): Tile[] {
+    const nonGroundTiles = tiles.filter((tile) => !tile.id.startsWith("g"));
+    const groundTiles = tiles.filter((tile) => tile.id.startsWith("g"));
+
+    return [...shuffleArray(nonGroundTiles), ...shuffleArray(groundTiles)];
+}
+
+function getSpawnPointFromTile(tile: Tile) {
+    return {
+        x: Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, tile.x + tile.w / 2)),
+        y: tile.y - PLAYER_RADIUS,
+    };
+}
+
+function spawnPlayerOnMapBlock(player: Player) {
+    const spawnTile = getSpawnTiles()[0];
+    if (!spawnTile) {
+        player.x = 120;
+        player.y = FLOOR_Y - PLAYER_RADIUS;
+        return;
+    }
+
+    const spawnPoint = getSpawnPointFromTile(spawnTile);
+    player.x = spawnPoint.x;
+    player.y = spawnPoint.y;
+}
+
 const wss = new WebSocketServer({ port: 3001 });
 const clients = new Map<WebSocket, ClientMeta>();
 const players = new Map<string, Player>();
@@ -153,6 +192,8 @@ let bombTagPlayerIds: Set<string> = new Set();
 let lastTagTs = 0;
 let roundStartTs = Date.now();
 let roundDurationMs = 180000;
+let roundHasBegun = false;
+let gameStartCountdownEndTs = 0;
 let gameMode: GameMode = "classic";
 let gameStarted = false;
 
@@ -172,7 +213,19 @@ function broadcast(payload: unknown) {
 }
 
 function getRemainingMs() {
+    if (!roundHasBegun) {
+        return roundDurationMs;
+    }
+
     return Math.max(0, roundDurationMs - (Date.now() - roundStartTs));
+}
+
+function getCountdownMs() {
+    if (!gameStarted || roundHasBegun || gameStartCountdownEndTs <= 0) {
+        return 0;
+    }
+
+    return Math.max(0, gameStartCountdownEndTs - Date.now());
 }
 
 function broadcastLobby() {
@@ -186,12 +239,12 @@ function broadcastLobby() {
 }
 
 function spawnPlayer(id: string, name: string, sessionId: string): Player {
-    return {
+    const player: Player = {
         id,
         sessionId,
         name,
         character: getRandomCharacter(),
-        x: 120 + ((players.size * 120) % 600),
+        x: 120,
         y: FLOOR_Y - PLAYER_RADIUS,
         vx: 0,
         vy: 0,
@@ -213,6 +266,10 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
         bombCounterPersonal: 0,
         isEliminated: false,
     };
+
+    spawnPlayerOnMapBlock(player);
+
+    return player;
 }
 
 function removePlayer(playerId: string) {
@@ -264,7 +321,7 @@ function pickRandomPlayerId(): string | null {
 }
 
 function resetRoundIfNeeded() {
-    if (!gameStarted) {
+    if (!gameStarted || !roundHasBegun) {
         return;
     }
 
@@ -292,6 +349,40 @@ function resetRoundIfNeeded() {
 function updateGame(dt: number) {
     if (!gameStarted) {
         return;
+    }
+
+    const countdownMs = getCountdownMs();
+    if (!roundHasBegun) {
+        if (countdownMs > 0) {
+            broadcast({
+                type: "state",
+                mode: gameMode,
+                arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
+                remainingMs: roundDurationMs,
+                countdownMs,
+                tagPlayerId,
+                players: [...players.values()].map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    character: p.character,
+                    x: p.x,
+                    y: p.y,
+                    vx: p.vx,
+                    vy: p.vy,
+                    onGround: p.onGround,
+                    radius: PLAYER_RADIUS,
+                    isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
+                    bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
+                    isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
+                })),
+                tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
+            });
+            return;
+        }
+
+        roundHasBegun = true;
+        roundStartTs = Date.now();
+        lastTagTs = Date.now();
     }
 
     const mode = MODE_CONFIG[gameMode];
@@ -525,6 +616,7 @@ function updateGame(dt: number) {
         mode: gameMode,
         arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
         remainingMs: getRemainingMs(),
+        countdownMs: 0,
         tagPlayerId,
             players: [...players.values()].map((p) => ({
             id: p.id,
@@ -665,7 +757,9 @@ wss.on("connection", (ws: WebSocket) => {
             }
 
             gameStarted = true;
-            roundStartTs = Date.now();
+            roundHasBegun = false;
+            gameStartCountdownEndTs = Date.now() + GAME_START_COUNTDOWN_MS;
+            roundStartTs = gameStartCountdownEndTs;
             lastTagTs = Date.now();
 
             // Calculate round duration based on mode
@@ -680,9 +774,20 @@ wss.on("connection", (ws: WebSocket) => {
 
             tagPlayerId = pickRandomPlayerId();
 
-            players.forEach((player) => {
-                player.x = 120 + ((Math.random() * 600) | 0);
-                player.y = FLOOR_Y;
+            const spawnTiles = getSpawnTiles();
+            const playerIds = shuffleArray([...players.keys()]);
+
+            playerIds.forEach((playerId, index) => {
+                const player = players.get(playerId);
+                if (!player) {
+                    return;
+                }
+
+                const spawnTile = spawnTiles[index % spawnTiles.length];
+                const spawnPoint = getSpawnPointFromTile(spawnTile);
+
+                player.x = spawnPoint.x;
+                player.y = spawnPoint.y;
                 player.vx = 0;
                 player.vy = 0;
                 player.gravityMultiplier = 1;
@@ -722,6 +827,8 @@ wss.on("connection", (ws: WebSocket) => {
             }
 
             gameStarted = false;
+            roundHasBegun = false;
+            gameStartCountdownEndTs = 0;
             roundStartTs = Date.now();
             tagPlayerId = null;
 

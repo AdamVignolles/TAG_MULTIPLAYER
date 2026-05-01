@@ -11,6 +11,7 @@ type GamepadPageProps = {
   isFullscreen: boolean
   playerColor: string | null
   bombTimer: number | null
+  controlsLocked: boolean
   onRequestFullscreen: () => void
   left: boolean
   right: boolean
@@ -33,6 +34,7 @@ export function GamepadPage({
   playerTagState,
   playerColor,
   bombTimer,
+  controlsLocked,
   isFullscreen,
   onRequestFullscreen,
   left,
@@ -87,7 +89,12 @@ export function GamepadPage({
   }
 
   return (
-    <main className="controller-layout gamepad" ref={containerRef} onTouchStart={handleProximityTouchStart}>
+    <main className={`controller-layout gamepad ${controlsLocked ? 'controls-locked' : ''}`} ref={containerRef} onTouchStart={controlsLocked ? undefined : handleProximityTouchStart}>
+      {controlsLocked && (
+        <div className="controller-lock-banner" aria-live="polite" aria-atomic="true">
+          Départ imminent
+        </div>
+      )}
 
       <div className="top-buttons">
         <div className="top-buttons-left">
@@ -158,6 +165,7 @@ export function GamepadPage({
         <div className="control-column horizontal-controls">
           <button
             className={`control ${left ? 'active' : ''}`}
+            disabled={controlsLocked}
             onPointerDown={onLeftPointerDown}
             onTouchStart={onLeftTouchStart}
           >
@@ -165,6 +173,7 @@ export function GamepadPage({
           </button>
           <button
             className={`control ${right ? 'active' : ''}`}
+            disabled={controlsLocked}
             onPointerDown={onRightPointerDown}
             onTouchStart={onRightTouchStart}
           >
@@ -175,6 +184,7 @@ export function GamepadPage({
         <div className="control-column vertical-controls">
           <button
             className={`control jump ${jump ? 'active' : ''}`}
+            disabled={controlsLocked}
             onPointerDown={onJumpPointerDown}
             onTouchStart={onJumpTouchStart}
           >
@@ -182,6 +192,7 @@ export function GamepadPage({
           </button>
           <button
             className={`control down ${down ? 'active' : ''}`}
+            disabled={controlsLocked}
             onPointerDown={onDownPointerDown}
             onTouchStart={onDownTouchStart}
           >

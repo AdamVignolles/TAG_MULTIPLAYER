@@ -98,7 +98,13 @@ export function ScreenApp() {
   })
   const [gameState, setGameState] = useState<StateMessage | null>(null)
   const [gameOverResult, setGameOverResult] = useState<GameOverResult | null>(null)
+  const [launchBurstUntil, setLaunchBurstUntil] = useState(0)
   const wsRef = useRef<WebSocket | null>(null)
+  const previousCountdownMsRef = useRef(0)
+  const countdownMs = gameState?.countdownMs ?? 0
+  const countdownSeconds = countdownMs > 0 ? Math.ceil(countdownMs / 1000) : 0
+  const showLaunchBurst = Date.now() < launchBurstUntil
+  const countdownLabel = countdownSeconds > 0 ? String(countdownSeconds) : (showLaunchBurst ? 'GO!' : '')
 
   const controllerUrl = useMemo(() => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -224,6 +230,46 @@ export function ScreenApp() {
       wsRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    const previousCountdownMs = previousCountdownMsRef.current
+
+    if (previousCountdownMs > 0 && countdownMs === 0) {
+      setLaunchBurstUntil(Date.now() + 650)
+
+      try {
+        const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        if (AudioContextCtor) {
+          const audioContext = new AudioContextCtor()
+          const oscillator = audioContext.createOscillator()
+          const gainNode = audioContext.createGain()
+
+          oscillator.type = 'triangle'
+          oscillator.frequency.setValueAtTime(880, audioContext.currentTime)
+          oscillator.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.18)
+
+          gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime)
+          gainNode.gain.exponentialRampToValueAtTime(0.9, audioContext.currentTime + 0.02)
+          gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22)
+
+          oscillator.connect(gainNode)
+          gainNode.connect(audioContext.destination)
+          oscillator.start()
+          oscillator.stop(audioContext.currentTime + 0.24)
+
+          oscillator.onended = () => {
+            audioContext.close().catch(() => {
+              // no-op
+            })
+          }
+        }
+      } catch {
+        // Audio is optional; the visual burst still runs.
+      }
+    }
+
+    previousCountdownMsRef.current = countdownMs
+  }, [countdownMs])
 
   function sendMode(mode: GameMode) {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
@@ -553,6 +599,13 @@ export function ScreenApp() {
             </div>
           )
         })}
+
+        {countdownLabel && (
+          <div className={`start-countdown-overlay ${countdownSeconds === 0 ? 'go-state' : ''}`} aria-live="polite" aria-atomic="true">
+            <div className="start-countdown-number">{countdownLabel}</div>
+            <div className="start-countdown-caption">Préparez-vous</div>
+          </div>
+        )}
       </section>
     </main>
   )
