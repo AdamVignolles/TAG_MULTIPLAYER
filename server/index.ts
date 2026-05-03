@@ -8,7 +8,7 @@ import {
     handleZombieRoundEnd,
     handleZombieAllTagsGameOver,
     getZombieSpeed,
-    calculateZombieDuration,
+    initZombieMode,
     handleZombieTag,
     handleZombieTransformationCleanup,
     checkZombieAllTagsGameOver,
@@ -539,7 +539,13 @@ function updateGame(dt: number) {
         // Collect all taggers based on game mode
         const taggers: Player[] = [];
         
-        if (gameMode === "bomb") {
+        if (gameMode === "zombie") {
+            for (const player of players.values()) {
+                if (player.isTag) {
+                    taggers.push(player);
+                }
+            }
+        } else if (gameMode === "bomb") {
             for (const tagId of bombTagPlayerIds) {
                 const tagPlayer = players.get(tagId);
                 if (tagPlayer && !tagPlayer.isEliminated) {
@@ -763,9 +769,7 @@ wss.on("connection", (ws: WebSocket) => {
             lastTagTs = Date.now();
 
             // Calculate round duration based on mode
-            if (gameMode === "zombie") {
-                roundDurationMs = calculateZombieDuration(players.size);
-            } else if (gameMode === "bomb") {
+            if (gameMode === "bomb") {
                 roundDurationMs = Number.POSITIVE_INFINITY;
             } else {
                 const mode = MODE_CONFIG[gameMode];
@@ -807,6 +811,12 @@ wss.on("connection", (ws: WebSocket) => {
                     player.isTag = true;
                 }
             });
+
+            // Initialize bomb mode
+            // Initialize zombie mode
+            if (gameMode === "zombie") {
+                initZombieMode(players);
+            }
 
             // Initialize bomb mode
             if (gameMode === "bomb") {

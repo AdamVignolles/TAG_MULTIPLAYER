@@ -31,8 +31,8 @@ const modeDescriptions: Record<string, ModeDescription> = {
       'Chaque joueur touché devient ZOMBIE',
       'Un joueur qui devient zombie est immobile pendant 3 secondes avant de pouvoir bouger à nouveau',
       'Les ZOMBIES restent ZOMBIES pendant toute la partie',
-      'Tous les survivants gagnents à la fin du temps imparti (60 secondes)',
-      'Pour qu\'un ZOMBIE gagne, il doit transformer un autre joueur en ZOMBIE et que tous les joueurs soient des ZOMBIES à la fin du temps imparti',
+      'Tous les survivants gagnents à la fin du temps imparti',
+      'Si tous les joueurs sont transformés en ZOMBIES avant la fin du temps, les zombies ayant transformé au moins un joueur gagnent',
       'Ainsi, si un zombie transforme plusieurs joueurs en zombies, il réduit le nombre de gagnants finaux',
     ],
   },
@@ -69,7 +69,7 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
       minPlayers: 2,
     },
     zombie: {
-      duree: '30/60 sec',
+      duree: '1:30 min',
       gagnant: '1+',
       tag: '1+',
       minPlayers: 3,
@@ -78,7 +78,7 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
       duree: '~ 3 min',
       gagnant: '1',
       tag: '1-11',
-      minPlayers: 3,
+      minPlayers: 2,
     },
   };
   return statsMap[mode] || { duree: '', gagnant: '', tag: '', minPlayers: 0 };

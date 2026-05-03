@@ -6,12 +6,36 @@ export const ZOMBIE_TRANSFORMATION_TIME_MS = 3000;
 export const ZOMBIE_CONFIG = {
     label: "Zombie",
     baseSpeed: 200,
-    tagSpeedBonus: -15,
+    tagSpeedBonus: 0, // No speed bonus for zombies in this mode
     gravity: 1100,
     jumpForce: 480,
-    baseRoundDurationMs: 45000,
+    baseRoundDurationMs: 90000, // 1:30 min
     minPlayers: 3,
 };
+
+// Runtime state for zombie mode
+let survivorSpeedBonus = 0;
+let survivorSpeedIncrement = 0; // amount survivors gain when someone is infected
+let tagSpeedPenalty = 0; // negative value applied to zombies initially based on player count
+
+export function initZombieMode(players: Map<string, Player>) {
+    survivorSpeedBonus = 0;
+    survivorSpeedIncrement = computeSurvivorSpeedIncrement(players.size);
+    tagSpeedPenalty = computeInitialTagPenalty(players.size);
+}
+
+export function computeInitialTagPenalty(playerCount: number): number {
+    if (playerCount <= 4) return 5;
+    return 0;
+}
+
+export function computeSurvivorSpeedIncrement(playerCount: number): number {
+    if (playerCount <= 10) return 10;
+    if (playerCount <= 20) return 5;
+    if (playerCount <= 30) return 3;
+    if (playerCount <= 50) return 2;
+    return 1;
+}
 
 export function handleZombieRoundEnd(
     players: Map<string, Player>,
@@ -105,19 +129,13 @@ export function getZombieSpeed(
     baseSpeed: number,
     tagSpeedBonus: number,
 ): number {
-    return player.isTag ? baseSpeed + tagSpeedBonus : baseSpeed;
+    if (player.isTag) {
+        return baseSpeed + tagSpeedBonus + tagSpeedPenalty;
+    }
+
+    return baseSpeed + survivorSpeedBonus;
 }
 
-export function calculateZombieDuration(playerCount: number): number {
-    // Scale duration linearly: fewer players = longer duration
-    // 1 player: 60s, 5+ players: 30s
-    const ZOMBIE_MIN_DURATION_MS = 30000;
-    const ZOMBIE_MAX_DURATION_MS = 60000;
-    
-    if (playerCount <= 1) return ZOMBIE_MAX_DURATION_MS;
-    const ratio = Math.max(0, Math.min(1, (playerCount - 1) / 4));
-    return ZOMBIE_MAX_DURATION_MS - ratio * (ZOMBIE_MAX_DURATION_MS - ZOMBIE_MIN_DURATION_MS);
-}
 
 export function handleZombieTag(
     tagger: Player,
@@ -132,6 +150,13 @@ export function handleZombieTag(
         type: "tag_event",
         from: tagger.name,
         to: candidate.name,
+    });
+    // Increase survivors' speed when someone becomes a zombie
+    survivorSpeedBonus += survivorSpeedIncrement;
+    broadcast({
+        type: "zombie_speed_update",
+        survivorSpeedBonus,
+        tagSpeedPenalty,
     });
 }
 

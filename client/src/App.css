@@ -143,7 +143,7 @@ button {
 }
 
 .controller-layout.gamepad {
-  min-height: 120vh;
+  min-height: 135vh;
 }
 
 
@@ -1530,13 +1530,38 @@ button {
 }
 
 .winners-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
   justify-content: center;
+  gap: 1.2rem;
   padding: 1.5rem;
-  background: rgba(217, 138, 47, 0.1);
   border-radius: 12px;
+  background: rgba(217, 138, 47, 0.1);
+  z-index: 0;
+  max-width: 950px;
+}
+
+.winners-list.winners::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 2px; /* épaisseur de la bordure */
+  background: linear-gradient(135deg, #ff8800, #1fb5c9);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+
+  z-index: -1;
+}
+
+
+
+.winners-list.losers {
+  border: 1px solid #283a2c;
 }
 
 .game-over-winners.bomb-mode .winners-list {
@@ -1548,25 +1573,35 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem 2rem;
+
+  width: 100%;
+  max-width: 180px; /* ✅ limite max */
+
+  margin: 0 auto; /* ✅ centre dans la colonne */
+
+  padding: 0.8rem 1rem;
+
   background: linear-gradient(135deg, #ff8800 0%, #1fb5c9 100%);
   color: rgb(0, 0, 0);
+
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(217, 138, 47, 0.3);
-  min-width: 180px;
-  font-size: 1.4rem;
+
+  font-size: clamp(0.9rem, 1.2vw, 1.4rem);
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.5px;
+
+  min-width: unset;
 }
 
 .winner-card.loser {
   background: #283a2c !important;
   box-shadow: 0 4px 12px rgba(200, 80, 80, 0.3);
-  padding: 0.5rem 0.5rem;
-  min-width: 120px;
 
+  padding: 0.5rem;
 }
+
 .winner-name {
   word-break: break-word;
 }
@@ -1585,6 +1620,7 @@ button {
   font-size: 1.2rem;
   font-weight: 700;
   color: #c85050;
+  margin-bottom: 10px;
 }
 
 .loser-name {

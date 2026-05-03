@@ -475,7 +475,7 @@ export function ScreenApp() {
                 {isBombMode ? '👑 Gagnant 👑' : `🏆 Gagnants (${winnersCount}) 🏆`}
               </div>
               
-              <div className="winners-list">
+              <div className="winners-list winners">
                 {winnersList.map((winner) => (
                   <div key={winner.id} className="winner-card">
                     <div className="winner-name">{winner.name}</div>
@@ -484,9 +484,9 @@ export function ScreenApp() {
               </div>
 
               {losersList.length > 0 && (
-                <div className="game-over-loser">
+                <div>
                   <div className="loser-label">💔 Perdants 💔</div>
-                  <div className="winners-list">
+                  <div className="winners-list losers">
                     {losersList.map((loser) => (
                       <div key={loser.id} className="winner-card loser">
                         <div className="loser-name">{loser.name}</div>
