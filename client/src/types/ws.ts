@@ -64,6 +64,21 @@ export type GameOverResult = {
   }[]
 }
 
+export type PlayerDeathMessage = {
+  type: 'player_death'
+  playerId: string
+  playerName: string
+}
+
+export type AuraTransferMessage = {
+  type: 'aura_transfer'
+  fromPlayerId: string
+  toPlayerId: string
+  fromPos: { x: number; y: number }
+  toPos: { x: number; y: number }
+  duration: number
+}
+
 export type ServerMessage =
   | { type: 'hello'; message: string }
   | { type: 'joined'; role: Role; playerId?: string; name?: string }
@@ -72,5 +87,7 @@ export type ServerMessage =
   | { type: 'game_over'; message: string }
   | { type: 'game_over_result'; result: GameOverResult }
   | { type: 'game_started'; mode: GameMode }
+  | PlayerDeathMessage
+  | AuraTransferMessage
   | LobbyMessage
   | StateMessage

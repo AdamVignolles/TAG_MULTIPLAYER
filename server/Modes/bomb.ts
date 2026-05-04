@@ -72,6 +72,8 @@ export function initBombMode(
     }
 }
 
+const AURA_TRANSITION_DURATION_MS = 1500; // 1.5 seconds for aura animation
+
 export function updateBombMode(
     dt: number,
     players: Map<string, Player>,
@@ -94,6 +96,13 @@ export function updateBombMode(
                 type: "tag_event",
                 from: "Bombe",
                 to: tagPlayer.name,
+            });
+            
+            // Send death animation event
+            broadcast({
+                type: "player_death",
+                playerId: tagPlayer.id,
+                playerName: tagPlayer.name,
             });
             
             // After elimination, check if we need to assign a new TAG
@@ -131,16 +140,39 @@ export function updateBombMode(
                 const newTagPlayer = nonTagPlayers[Math.floor(Math.random() * nonTagPlayers.length)];
 
                 bombTagPlayerIds.add(newTagPlayer.id);
-                newTagPlayer.isTag = true;
-                const newBombCounter = getBombCounterForPlayerCount(nonEliminatedPlayers.length);
-                newTagPlayer.bombCounter = newBombCounter;
-                newTagPlayer.bombCounterPersonal = newBombCounter;
-                newTagPlayer.bombCounterStartTime = Date.now();
+                
+                // Start aura transition animation
+                // Store transition info in custom properties (we'll extend Player type)
+                (tagPlayer as any).transitionEndPlayerId = newTagPlayer.id;
+                (tagPlayer as any).transitionStartTime = Date.now();
+                (newTagPlayer as any).isAwaitingTag = true;
+
+                // Send aura transition event to start animation on client
                 broadcast({
-                    type: "tag_event",
-                    from: "Système",
-                    to: newTagPlayer.name,
+                    type: "aura_transfer",
+                    fromPlayerId: tagPlayer.id,
+                    toPlayerId: newTagPlayer.id,
+                    fromPos: { x: tagPlayer.x, y: tagPlayer.y },
+                    toPos: { x: newTagPlayer.x, y: newTagPlayer.y },
+                    duration: AURA_TRANSITION_DURATION_MS,
                 });
+
+                // Schedule the actual tag assignment after animation completes
+                setTimeout(() => {
+                    if (!newTagPlayer.isEliminated) {
+                        newTagPlayer.isTag = true;
+                        const newBombCounter = getBombCounterForPlayerCount(nonEliminatedPlayers.length);
+                        newTagPlayer.bombCounter = newBombCounter;
+                        newTagPlayer.bombCounterPersonal = newBombCounter;
+                        newTagPlayer.bombCounterStartTime = Date.now();
+                        (newTagPlayer as any).isAwaitingTag = false;
+                        broadcast({
+                            type: "tag_event",
+                            from: "Système",
+                            to: newTagPlayer.name,
+                        });
+                    }
+                }, AURA_TRANSITION_DURATION_MS);
             } else {
                 // No new TAG assigned, just remove the eliminated TAG from the set
                 bombTagPlayerIds.delete(tagId);

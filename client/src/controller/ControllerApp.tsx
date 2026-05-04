@@ -391,9 +391,14 @@ export function ControllerApp() {
 
   if (!gameState) {
     lockMessage = 'En attente...'
-  } else if (isCountdown) {
-    lockMessage = 'Départ imminent'
-  } else if (isEliminated) {
+  } 
+  else if (playerTagState === 'TAG' && isCountdown) {
+  lockMessage = 'Vous êtes TAG, départ imminent'
+  }
+  else if (playerTagState === 'FREE' && isCountdown) {
+    lockMessage = 'Vous êtes FREE, départ imminent'
+  }
+  else if (isEliminated) {
     lockMessage = 'Compteur vide, vous êtes éliminé 💀'
   }
 

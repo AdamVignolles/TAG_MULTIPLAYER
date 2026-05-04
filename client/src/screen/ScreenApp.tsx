@@ -99,6 +99,8 @@ export function ScreenApp() {
   const [gameState, setGameState] = useState<StateMessage | null>(null)
   const [gameOverResult, setGameOverResult] = useState<GameOverResult | null>(null)
   const [launchBurstUntil, setLaunchBurstUntil] = useState(0)
+  const [playerDeaths, setPlayerDeaths] = useState<Set<string>>(new Set())
+  const [auraTransfers, setAuraTransfers] = useState<Array<{ id: string; fromPlayerId: string; toPlayerId: string; fromPos: { x: number; y: number }; toPos: { x: number; y: number }; duration: number; startTime: number }>>([])
   const wsRef = useRef<WebSocket | null>(null)
   const previousCountdownMsRef = useRef(0)
   const countdownMs = gameState?.countdownMs ?? 0
@@ -186,6 +188,35 @@ export function ScreenApp() {
 
               if (data.type === 'tag_event') {
                 setLog(`${data.from} a tag ${data.to}`)
+                return
+              }
+
+              if (data.type === 'player_death') {
+                setPlayerDeaths(prev => new Set([...prev, data.playerId]))
+                setTimeout(() => {
+                  setPlayerDeaths(prev => {
+                    const newSet = new Set(prev)
+                    newSet.delete(data.playerId)
+                    return newSet
+                  })
+                }, 800)
+                return
+              }
+
+              if (data.type === 'aura_transfer') {
+                const transferId = `${data.fromPlayerId}-${Date.now()}`
+                setAuraTransfers(prev => [...prev, {
+                  id: transferId,
+                  fromPlayerId: data.fromPlayerId,
+                  toPlayerId: data.toPlayerId,
+                  fromPos: data.fromPos,
+                  toPos: data.toPos,
+                  duration: data.duration,
+                  startTime: Date.now(),
+                }])
+                setTimeout(() => {
+                  setAuraTransfers(prev => prev.filter(t => t.id !== transferId))
+                }, data.duration + 100)
                 return
               }
 
@@ -285,6 +316,8 @@ export function ScreenApp() {
     setLobby((prev) => ({ ...prev, started: false }))
     setGameState(null)
     setGameOverResult(null)
+    setPlayerDeaths(new Set())
+    setAuraTransfers([])
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'stop_game' }))
@@ -596,6 +629,83 @@ export function ScreenApp() {
                   {playerLabel}
                 </div>
               </div>
+            </div>
+          )
+        })}
+
+        {/* Death animations */}
+        {(gameState?.players ?? [])
+          .filter(player => playerDeaths.has(player.id))
+          .map((player) => {
+            return (
+              <div
+                key={`death-${player.id}`}
+                style={{
+                  position: 'absolute',
+                  left: `${player.x}px`,
+                  top: `${player.y}px`,
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  className="death-pulse"
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    border: '3px solid #ff4444',
+                    animation: 'deathPulse 0.8s ease-out forwards',
+                    boxShadow: '0 0 20px rgba(255, 68, 68, 0.8)',
+                  }}
+                />
+              </div>
+            )
+          })}
+
+        {/* Aura transfer animations */}
+        {auraTransfers.map((transfer) => {
+          const elapsed = Date.now() - transfer.startTime
+          const progress = Math.min(elapsed / transfer.duration, 1)
+          
+          const currentX = transfer.fromPos.x + (transfer.toPos.x - transfer.fromPos.x) * progress
+          const currentY = transfer.fromPos.y + (transfer.toPos.y - transfer.fromPos.y) * progress
+          
+          return (
+            <div
+              key={transfer.id}
+              style={{
+                position: 'absolute',
+                left: `${currentX}px`,
+                top: `${currentY}px`,
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                className="aura-orb"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle at 30% 30%, #ffff00, #ff8800)',
+                  boxShadow: '0 0 30px rgba(255, 200, 0, 0.9), inset -2px -2px 5px rgba(0, 0, 0, 0.3)',
+                  animation: 'auraFloat 0.5s ease-in-out infinite',
+                  opacity: Math.sin(progress * Math.PI) * 0.8 + 0.2,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  border: '2px solid rgba(255, 200, 0, 0.6)',
+                  left: '-20px',
+                  top: '-20px',
+                  animation: 'auraRing 0.8s linear infinite',
+                }}
+              />
             </div>
           )
         })}
