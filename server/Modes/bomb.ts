@@ -11,7 +11,7 @@ export const BOMB_CONFIG = {
 };
 
 export const BOMB_GROUP = [
-    { minPlayers: 2, maxPlayers: 3, initialTags: 1, initialCounter: 40 },
+    { minPlayers: 2, maxPlayers: 3, initialTags: 1, initialCounter: 10 },
     { minPlayers: 4, maxPlayers: 5, initialTags: 1, initialCounter: 35 },
     { minPlayers: 6, maxPlayers: 8, initialTags: 2, initialCounter: 30 },
     { minPlayers: 9, maxPlayers: 12, initialTags: 2, initialCounter: 25 },
@@ -148,12 +148,11 @@ export function updateBombMode(
                 (newTagPlayer as any).isAwaitingTag = true;
 
                 // Send aura transition event to start animation on client
+                // Note: We don't send positions as they're dynamic - the client will follow the players
                 broadcast({
                     type: "aura_transfer",
                     fromPlayerId: tagPlayer.id,
                     toPlayerId: newTagPlayer.id,
-                    fromPos: { x: tagPlayer.x, y: tagPlayer.y },
-                    toPos: { x: newTagPlayer.x, y: newTagPlayer.y },
                     duration: AURA_TRANSITION_DURATION_MS,
                 });
 

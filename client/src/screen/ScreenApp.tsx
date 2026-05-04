@@ -100,7 +100,7 @@ export function ScreenApp() {
   const [gameOverResult, setGameOverResult] = useState<GameOverResult | null>(null)
   const [launchBurstUntil, setLaunchBurstUntil] = useState(0)
   const [playerDeaths, setPlayerDeaths] = useState<Set<string>>(new Set())
-  const [auraTransfers, setAuraTransfers] = useState<Array<{ id: string; fromPlayerId: string; toPlayerId: string; fromPos: { x: number; y: number }; toPos: { x: number; y: number }; duration: number; startTime: number }>>([])
+  const [auraTransfers, setAuraTransfers] = useState<Array<{ id: string; fromPlayerId: string; toPlayerId: string; duration: number; startTime: number }>>([])
   const wsRef = useRef<WebSocket | null>(null)
   const previousCountdownMsRef = useRef(0)
   const countdownMs = gameState?.countdownMs ?? 0
@@ -209,8 +209,6 @@ export function ScreenApp() {
                   id: transferId,
                   fromPlayerId: data.fromPlayerId,
                   toPlayerId: data.toPlayerId,
-                  fromPos: data.fromPos,
-                  toPos: data.toPos,
                   duration: data.duration,
                   startTime: Date.now(),
                 }])
@@ -665,11 +663,16 @@ export function ScreenApp() {
 
         {/* Aura transfer animations */}
         {auraTransfers.map((transfer) => {
+          const fromPlayer = gameState?.players.find(p => p.id === transfer.fromPlayerId)
+          const toPlayer = gameState?.players.find(p => p.id === transfer.toPlayerId)
+          
+          if (!fromPlayer || !toPlayer) return null
+          
           const elapsed = Date.now() - transfer.startTime
           const progress = Math.min(elapsed / transfer.duration, 1)
           
-          const currentX = transfer.fromPos.x + (transfer.toPos.x - transfer.fromPos.x) * progress
-          const currentY = transfer.fromPos.y + (transfer.toPos.y - transfer.fromPos.y) * progress
+          const currentX = fromPlayer.x + (toPlayer.x - fromPlayer.x) * progress
+          const currentY = fromPlayer.y + (toPlayer.y - fromPlayer.y) * progress
           
           return (
             <div

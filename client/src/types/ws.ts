@@ -74,8 +74,6 @@ export type AuraTransferMessage = {
   type: 'aura_transfer'
   fromPlayerId: string
   toPlayerId: string
-  fromPos: { x: number; y: number }
-  toPos: { x: number; y: number }
   duration: number
 }
 
