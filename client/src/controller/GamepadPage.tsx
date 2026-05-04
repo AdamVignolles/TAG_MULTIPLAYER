@@ -12,6 +12,7 @@ type GamepadPageProps = {
   playerColor: string | null
   bombTimer: number | null
   controlsLocked: boolean
+  lockMessage: string | null
   onRequestFullscreen: () => void
   left: boolean
   right: boolean
@@ -35,6 +36,7 @@ export function GamepadPage({
   playerColor,
   bombTimer,
   controlsLocked,
+  lockMessage,
   isFullscreen,
   onRequestFullscreen,
   left,
@@ -90,9 +92,9 @@ export function GamepadPage({
 
   return (
     <main className={`controller-layout gamepad ${controlsLocked ? 'controls-locked' : ''}`} ref={containerRef} onTouchStart={controlsLocked ? undefined : handleProximityTouchStart}>
-      {controlsLocked && (
+      {controlsLocked && lockMessage &&(
         <div className="controller-lock-banner" aria-live="polite" aria-atomic="true">
-          Départ imminent
+          {lockMessage}
         </div>
       )}
 

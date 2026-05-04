@@ -69,6 +69,8 @@ export function ControllerApp() {
   const [playerColor, setPlayerColor] = useState<string | null>(null)
   const [bombTimer, setBombTimer] = useState<number | null>(null)
   const [gameState, setGameState] = useState<{ countdownMs?: number } | null>(null)
+  const [isEliminated, setIsEliminated] = useState(false)
+
   const [, setLog] = useState('')
   const [lobby, setLobby] = useState<LobbyMessage | null>(null)
 
@@ -190,6 +192,9 @@ export function ControllerApp() {
                 setPlayerTagState(isTag ? 'TAG' : 'FREE')
                 setPlayerColor(me.character ?? null)
                 setBombTimer(data.mode === 'bomb' && me.bombCounter !== undefined ? me.bombCounter : null)
+
+                setIsEliminated(Boolean(me.isEliminated))
+
                 return
               }
 
@@ -380,7 +385,17 @@ export function ControllerApp() {
   }
 
   const isCountdown = (gameState?.countdownMs ?? 0) > 0
-  const controlsLocked = !gameState || isCountdown
+  const controlsLocked = !gameState || isCountdown || isEliminated
+
+  let lockMessage: string | null = null
+
+  if (!gameState) {
+    lockMessage = 'En attente...'
+  } else if (isCountdown) {
+    lockMessage = 'Départ imminent'
+  } else if (isEliminated) {
+    lockMessage = 'Compteur vide, vous êtes éliminé 💀'
+  }
 
   if (!lobby?.started || gameOver) {
     if (isPortrait) {
@@ -413,6 +428,7 @@ export function ControllerApp() {
       playerColor={playerColor}
       bombTimer={bombTimer}
       controlsLocked={controlsLocked}
+      lockMessage={lockMessage}
       onRequestFullscreen={requestFullscreen}
       left={left}
       right={right}
