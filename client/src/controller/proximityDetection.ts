@@ -80,3 +80,16 @@ export function getClosestButtonWithFallback(
   // Sinon, chercher le plus proche dans la zone de proximité
   return findClosestButton(x, y, buttons)
 }
+
+export function getClosestButtonWithFallbackAndTouchId(
+  x: number,
+  y: number,
+  buttons: ButtonRect[],
+  touchId: number
+): { key: ButtonKey; touchId: number } | null {
+  const buttonKey = getClosestButtonWithFallback(x, y, buttons)
+  if (buttonKey) {
+    return { key: buttonKey, touchId }
+  }
+  return null
+}

@@ -2,7 +2,7 @@ import type { PointerEvent, TouchEvent } from 'react'
 import { useRef, useEffect } from 'react'
 import { getReadableBackground, getReadableColor, getFrenchColor } from './colorUtils'
 import type { ButtonKey } from './proximityDetection'
-import { getButtonRects, getClosestButtonWithFallback } from './proximityDetection'
+import { getButtonRects, getClosestButtonWithFallbackAndTouchId } from './proximityDetection'
 
 type GamepadPageProps = {
   name: string
@@ -26,7 +26,7 @@ type GamepadPageProps = {
   onJumpTouchStart: (event: TouchEvent<HTMLButtonElement>) => void
   onDownPointerDown: (event: PointerEvent<HTMLButtonElement>) => void
   onDownTouchStart: (event: TouchEvent<HTMLButtonElement>) => void
-  onProximityTrigger?: (buttonKey: ButtonKey) => void
+  onProximityTrigger?: (buttonKey: ButtonKey, touchId: number) => void
 }
 
 export function GamepadPage({
@@ -78,14 +78,15 @@ export function GamepadPage({
     if (!onProximityTrigger || buttonRectsRef.current.length === 0) return
 
     for (const touch of Array.from(e.changedTouches)) {
-      const closestButton = getClosestButtonWithFallback(
+      const result = getClosestButtonWithFallbackAndTouchId(
         touch.clientX,
         touch.clientY,
-        buttonRectsRef.current
+        buttonRectsRef.current,
+        touch.identifier
       )
 
-      if (closestButton) {
-        onProximityTrigger(closestButton)
+      if (result) {
+        onProximityTrigger(result.key, result.touchId)
       }
     }
   }

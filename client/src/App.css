@@ -143,7 +143,7 @@ button {
 }
 
 .controller-layout.gamepad {
-  min-height: 135vh;
+  min-height: 130vh;
 }
 
 
@@ -944,10 +944,18 @@ button {
 
 .player.tag {
   background: transparent;
-  border: transparent;
-  box-shadow: rgba(200, 214, 7, 0.322) 0 0 14px 4px, rgba(255, 0, 0, 0.795) 0 0 26px 8px, rgba(255, 0, 0, 0.63) 0 0 44px 14px;
   border-radius: 7px;
-  border: 2px solid #ff0000;
+
+  border: none;
+
+  box-shadow:
+    0 0 0 1px #000000,
+    0 0 0 2px #ff0000,
+
+    rgba(200, 214, 7, 0.322) 0 0 14px 4px,
+    rgba(255, 0, 0, 0.795) 0 0 26px 8px,
+    rgba(255, 0, 0, 0.63) 0 0 44px 14px;
+
   z-index: 3;
 }
 
@@ -1034,7 +1042,7 @@ button {
 }
 
 .controller-grid {
-  width: min(800px, 94vw);
+  width: min(850px, 94vw);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1099,7 +1107,7 @@ button {
 
 .horizontal-controls .control {
   flex: 1;
-  padding: clamp(2rem, 8vw, 5rem) clamp(1rem, 3vw, 3rem);
+  padding: clamp(2rem, 8vw, 5rem) clamp(1.5rem, 4vw, 4rem);
   min-width: 0;
 }
 
@@ -1379,7 +1387,7 @@ button {
 
 @media (max-width: 400px) {
   .horizontal-controls .control {
-    padding: clamp(1.5rem, 6vw, 2rem) clamp(0.75rem, 2vw, 1rem);
+    padding: clamp(1.5rem, 6vw, 2rem) clamp(1.5rem, 5vw, 3rem);
   }
 
   .vertical-controls .control {

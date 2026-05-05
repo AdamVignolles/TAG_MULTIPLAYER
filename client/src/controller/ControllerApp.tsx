@@ -503,8 +503,8 @@ export function ControllerApp() {
           setDown(true)
         }
       }}
-      onProximityTrigger={(buttonKey) => {
-        activePointersRef.current.get(buttonKey)!.add(Math.random())
+      onProximityTrigger={(buttonKey, touchId) => {
+        activePointersRef.current.get(buttonKey)!.add(touchId)
         if (buttonKey === 'left') setLeft(true)
         else if (buttonKey === 'right') setRight(true)
         else if (buttonKey === 'jump') setJump(true)
