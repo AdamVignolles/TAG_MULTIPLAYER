@@ -7,7 +7,7 @@ import { ConnectionPage } from './ConnectionPage'
 import { PortraitWarningPage } from './PortraitWarningPage'
 import { WaitingLaunchPage } from './WaitingLaunchPage'
 import { GamepadPage } from './GamepadPage'
-import { vibrateGameStart, vibrateGameOver, vibrateBecameTag, vibrateBecameFree, vibrateEliminated } from './vibration'
+import { vibrateGameStart, vibrateGameOver, vibrateBecameTag, vibrateBecameFree, vibrateEliminated, flushVibration } from './vibration'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -115,6 +115,17 @@ export function ControllerApp() {
     return () => {
       media.removeEventListener('change', updateOrientation)
       document.removeEventListener('fullscreenchange', updateFullscreen)
+    }
+  }, [])
+
+  // Flush queued vibrations on any user touch/pointer interaction
+  useEffect(() => {
+    const handler = () => flushVibration()
+    document.addEventListener('pointerdown', handler)
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('pointerdown', handler)
+      document.removeEventListener('touchstart', handler)
     }
   }, [])
 
