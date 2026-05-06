@@ -7,6 +7,7 @@ import { ConnectionPage } from './ConnectionPage'
 import { PortraitWarningPage } from './PortraitWarningPage'
 import { WaitingLaunchPage } from './WaitingLaunchPage'
 import { GamepadPage } from './GamepadPage'
+import { vibrateGameStart, vibrateGameOver, vibrateBecameTag, vibrateBecameFree, vibrateEliminated } from './vibration'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -86,6 +87,8 @@ export function ControllerApp() {
   const playerIdRef = useRef<string | null>(null)
   const controllerSessionIdRef = useRef(readStoredValue(CONTROLLER_SESSION_STORAGE_KEY) ?? createControllerSessionId())
   const sentColorForPlayerIdRef = useRef<string | null>(null)
+  const prevTagStateRef = useRef<'TAG' | 'FREE'>('FREE')
+  const prevEliminatedRef = useRef(false)
 
   useEffect(() => {
     writeStoredValue(CONTROLLER_SESSION_STORAGE_KEY, controllerSessionIdRef.current)
@@ -189,11 +192,22 @@ export function ControllerApp() {
                 if (!me) return
 
                 const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : (data.mode === 'bomb' ? Boolean(me.isTag) : data.tagPlayerId === me.id)
-                setPlayerTagState(isTag ? 'TAG' : 'FREE')
+                const newTagState = isTag ? 'TAG' : 'FREE'
+                if (prevTagStateRef.current !== newTagState) {
+                  if (newTagState === 'TAG') vibrateBecameTag()
+                  else vibrateBecameFree()
+                  prevTagStateRef.current = newTagState
+                }
+                setPlayerTagState(newTagState)
                 setPlayerColor(me.character ?? null)
                 setBombTimer(data.mode === 'bomb' && me.bombCounter !== undefined ? me.bombCounter : null)
 
-                setIsEliminated(Boolean(me.isEliminated))
+                const nowEliminated = Boolean(me.isEliminated)
+                if (nowEliminated && !prevEliminatedRef.current) {
+                  vibrateEliminated()
+                }
+                prevEliminatedRef.current = nowEliminated
+                setIsEliminated(nowEliminated)
 
                 return
               }
@@ -203,14 +217,24 @@ export function ControllerApp() {
                 return
               }
 
+              if (data.type === 'game_started') {
+                vibrateGameStart()
+                prevTagStateRef.current = 'FREE'
+                prevEliminatedRef.current = false
+                return
+              }
+
               if (data.type === 'tag_event') {
                 setLog(`${data.from} a tag ${data.to}`)
                 return
               }
 
               if (data.type === 'game_over_result') {
+                vibrateGameOver()
                 setBombTimer(null)
                 setGameState(null)
+                prevTagStateRef.current = 'FREE'
+                prevEliminatedRef.current = false
                 // If this player is in the winner list, show waiting page
                 if (data.result.winnersList.some((winner) => winner.id === playerIdRef.current)) {
                   setGameOver(true)
@@ -223,6 +247,9 @@ export function ControllerApp() {
                 setBombTimer(null)
                 setGameState(null)
                 if (data.type === 'game_over') {
+                  vibrateGameOver()
+                  prevTagStateRef.current = 'FREE'
+                  prevEliminatedRef.current = false
                   setGameOver(true)
                 }
               }
