@@ -35,11 +35,14 @@ export function getInitialTagCountForPlayerCount(playerCount: number): number {
     return config.initialTags;
 }
 
+let initialPlayerCount = 0;
+
 export function initBombMode(
     players: Map<string, Player>,
     bombTagPlayerIds: Set<string>,
 ): void {
     const playerCount = players.size;
+    initialPlayerCount = playerCount;
     const initialTagCount = getInitialTagCountForPlayerCount(playerCount);
     const bombCounter = getBombCounterForPlayerCount(playerCount);
     const now = Date.now();
@@ -160,7 +163,7 @@ export function updateBombMode(
                 setTimeout(() => {
                     if (!newTagPlayer.isEliminated) {
                         newTagPlayer.isTag = true;
-                        const newBombCounter = getBombCounterForPlayerCount(nonEliminatedPlayers.length);
+                        const newBombCounter = getBombCounterForPlayerCount(initialPlayerCount);
                         newTagPlayer.bombCounter = newBombCounter;
                         newTagPlayer.bombCounterPersonal = newBombCounter;
                         newTagPlayer.bombCounterStartTime = Date.now();
