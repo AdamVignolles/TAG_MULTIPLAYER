@@ -6,15 +6,14 @@
   "scripts": {
     "client": "npm run dev --prefix client",
     "server": "npm run dev --prefix server",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "install:all": "npm install && concurrently \"npm install --prefix client\" \"npm install --prefix server\""
+    "dev": "npm run server & npm run client",
+    "install:all": "npm install && npm install --prefix client & npm install --prefix server & wait"
   },
   "dependencies": {
     "ws": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.0.0",
-    "concurrently": "^9.2.1",
     "jest": "^27.0.0",
     "ts-jest": "^27.0.0",
     "ts-node": "^10.0.0",
