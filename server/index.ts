@@ -1,4 +1,8 @@
 /// <reference path="./ws.d.ts" />
+import { createServer } from "http";
+import { readFileSync, existsSync, statSync } from "fs";
+import { join, extname } from "path";
+import { fileURLToPath } from "url";
 import { WebSocketServer, WebSocket } from "ws";
 import { ARENA_HEIGHT, ARENA_WIDTH, FLOOR_Y, createSimpleMap } from "./BlocMap.ts";
 import type { Tile } from "./BlocMap.ts";
@@ -181,7 +185,51 @@ function spawnPlayerOnMapBlock(player: Player) {
     player.y = spawnPoint.y;
 }
 
-const wss = new WebSocketServer({ port: 3001 });
+const PORT = Number(process.env.PORT) || 3001;
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const CLIENT_DIST = join(__dirname, "..", "..", "client", "dist");
+
+const MIME_TYPES: Record<string, string> = {
+    ".html": "text/html",
+    ".js": "application/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".webp": "image/webp",
+};
+
+const httpServer = createServer((req, res) => {
+    const url = req.url?.split("?")[0] ?? "/";
+
+    // Try to serve static file from client/dist
+    let filePath = join(CLIENT_DIST, url === "/" ? "index.html" : url);
+
+    if (existsSync(filePath) && statSync(filePath).isFile()) {
+        const ext = extname(filePath);
+        res.writeHead(200, { "Content-Type": MIME_TYPES[ext] || "application/octet-stream" });
+        res.end(readFileSync(filePath));
+        return;
+    }
+
+    // SPA fallback: serve index.html for unmatched routes
+    const indexPath = join(CLIENT_DIST, "index.html");
+    if (existsSync(indexPath)) {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(readFileSync(indexPath));
+        return;
+    }
+
+    res.writeHead(404);
+    res.end("Not found");
+});
+
+const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 const clients = new Map<WebSocket, ClientMeta>();
 const players = new Map<string, Player>();
 const disconnectedPlayerTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -908,4 +956,6 @@ setInterval(() => {
     updateGame(TICK_MS / 1000);
 }, TICK_MS);
 
-console.log("Serveur TAG lancé sur ws://localhost:3001");
+httpServer.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});

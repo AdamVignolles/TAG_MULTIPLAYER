@@ -7,7 +7,9 @@
     "client": "npm run dev --prefix client",
     "server": "npm run dev --prefix server",
     "dev": "npm run server & npm run client",
-    "install:all": "npm install && npm install --prefix client & npm install --prefix server & wait"
+    "install:all": "npm install && npm install --prefix client & npm install --prefix server & wait",
+    "build": "npm install --prefix client && npm install --prefix server && npm run build --prefix client && npm run build --prefix server",
+    "start": "npm start --prefix server"
   },
   "dependencies": {
     "ws": "^8.0.0"

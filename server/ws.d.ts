@@ -1,4 +1,6 @@
 declare module "ws" {
+  import type { Server as HttpServer } from "http";
+
   export class WebSocket {
     static OPEN: number;
     readyState: number;
@@ -10,7 +12,7 @@ declare module "ws" {
 
   export class WebSocketServer {
     clients: Set<WebSocket>;
-    constructor(options: { port: number });
+    constructor(options: { port?: number; server?: HttpServer; path?: string });
     on(event: "connection", listener: (ws: WebSocket) => void): this;
   }
 }
