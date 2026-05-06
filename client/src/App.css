@@ -54,13 +54,17 @@ button {
   min-height: 100vh;
 }
 
+.screen-home{
+    background: linear-gradient(180deg, #8dd8ff 0%, #aee7ff 50%, #daf4ff 100%);
+}
+
 .screen-home, .turnPhone {
   min-height: 100vh;
 }
 
 .screen-home-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1.05fr 1fr;
   gap: 3rem;
   width: 100%;
   max-width: 2000px;
@@ -168,6 +172,12 @@ button {
   text-align: center;
   height: 100%;
   justify-content: flex-start;
+}
+
+
+.screen-home-card:nth-child(2) {
+  transform: scale(1.06);
+  z-index: 1;
 }
 
 .screen-home-card h1,

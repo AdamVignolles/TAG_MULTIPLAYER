@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // proxy websocket upgrades from /ws to backend ws server on port 3001
       '/ws': {
-        target: 'ws://localhost:3001',
+        target: `ws://${process.env.WS_TARGET ?? 'localhost'}:3001`,
         ws: true,
         changeOrigin: true,
       },

@@ -11,7 +11,7 @@ export const BOMB_CONFIG = {
 };
 
 export const BOMB_GROUP = [
-    { minPlayers: 2, maxPlayers: 3, initialTags: 1, initialCounter: 10 },
+    { minPlayers: 2, maxPlayers: 3, initialTags: 1, initialCounter: 40 },
     { minPlayers: 4, maxPlayers: 5, initialTags: 1, initialCounter: 35 },
     { minPlayers: 6, maxPlayers: 8, initialTags: 2, initialCounter: 30 },
     { minPlayers: 9, maxPlayers: 12, initialTags: 2, initialCounter: 25 },
