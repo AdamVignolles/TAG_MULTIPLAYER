@@ -44,7 +44,6 @@ export type StateMessage = {
   countdownMs?: number
   tagPlayerId: string | null
   players: PlayerView[]
-  tiles: TileView[]
 }
 
 export type GameOverResult = {
@@ -84,7 +83,7 @@ export type ServerMessage =
   | { type: 'tag_event'; from: string; to: string }
   | { type: 'game_over'; message: string }
   | { type: 'game_over_result'; result: GameOverResult }
-  | { type: 'game_started'; mode: GameMode }
+  | { type: 'game_started'; mode: GameMode; arena: { width: number; height: number; floorY: number }; tiles: TileView[] }
   | PlayerDeathMessage
   | AuraTransferMessage
   | LobbyMessage

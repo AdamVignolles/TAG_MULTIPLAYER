@@ -97,6 +97,8 @@ export function ScreenApp() {
     started: false,
   })
   const [gameState, setGameState] = useState<StateMessage | null>(null)
+  const [gameTiles, setGameTiles] = useState<import('../types/ws').TileView[]>([])
+  const [gameArena, setGameArena] = useState<{ width: number; height: number; floorY: number } | null>(null)
   const [gameOverResult, setGameOverResult] = useState<GameOverResult | null>(null)
   const [launchBurstUntil, setLaunchBurstUntil] = useState(0)
   const [playerDeaths, setPlayerDeaths] = useState<Set<string>>(new Set())
@@ -183,6 +185,12 @@ export function ScreenApp() {
 
               if (data.type === 'lobby') {
                 setLobby(data)
+                return
+              }
+
+              if (data.type === 'game_started') {
+                setGameTiles(data.tiles)
+                setGameArena(data.arena)
                 return
               }
 
@@ -313,6 +321,8 @@ export function ScreenApp() {
   function goHome() {
     setLobby((prev) => ({ ...prev, started: false }))
     setGameState(null)
+    setGameTiles([])
+    setGameArena(null)
     setGameOverResult(null)
     setPlayerDeaths(new Set())
     setAuraTransfers([])
@@ -446,8 +456,8 @@ export function ScreenApp() {
     )
   }
 
-  const arenaW = gameState?.arena.width ?? 900
-  const arenaH = gameState?.arena.height ?? 500
+  const arenaW = gameArena?.width ?? gameState?.arena.width ?? 900
+  const arenaH = gameArena?.height ?? gameState?.arena.height ?? 500
   const playerCount = gameState?.players.length ?? lobby.connectedPlayers
 
   // Game over screen
@@ -577,7 +587,7 @@ export function ScreenApp() {
         <div className="arena-grid" aria-hidden="true" />
         <div className="arena-noise" aria-hidden="true" />
 
-        {(gameState?.tiles ?? []).map((tile) => {
+        {gameTiles.map((tile) => {
           const color = TILE_COLORS[tile.type] ?? '#7bd389'
 
           return (

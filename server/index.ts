@@ -423,7 +423,6 @@ function updateGame(dt: number) {
                     bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
                     isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
                 })),
-                tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
             });
             return;
         }
@@ -686,7 +685,6 @@ function updateGame(dt: number) {
             bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
             isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
             })),
-            tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
     });
 }
 
@@ -874,6 +872,8 @@ wss.on("connection", (ws: WebSocket) => {
             broadcast({
                 type: "game_started",
                 mode: gameMode,
+                arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
+                tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
             });
             broadcastLobby();
             return;
