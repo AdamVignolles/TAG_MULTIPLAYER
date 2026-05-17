@@ -1,4 +1,5 @@
 import { getReadableBackground, getReadableColor, getFrenchColor } from './colorUtils'
+import { isIPhone } from './deviceDetection'
 
 type WaitingLaunchPageProps = {
   name: string
@@ -19,9 +20,11 @@ export function WaitingLaunchPage({
   onRequestFullscreen,
   onChangePseudo,
 }: WaitingLaunchPageProps) {
+  const isPhone = isIPhone()
+
   return (
     <main className="controller-layout waiting controller-force-landscape" style={isFullscreen ? { minHeight: '100vh' } : {}}>
-      {!isFullscreen && (
+      {!isFullscreen && !isPhone && (
         <>         
           <button
             className="fullscreen-button"
