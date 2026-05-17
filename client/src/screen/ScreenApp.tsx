@@ -112,16 +112,16 @@ export function ScreenApp() {
 
   const controllerUrl = useMemo(() => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    
+
     if (isLocalhost && import.meta.env.VITE_LOCAL_IP) {
       // Si c'est local, utiliser l'IP du réseau local
       const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
       const port = window.location.port ? `:${window.location.port}` : ''
-      return `${protocol}://${import.meta.env.VITE_LOCAL_IP}${port}${window.location.pathname}?role=controller`
+      return `${protocol}://${import.meta.env.VITE_LOCAL_IP}${port}/controller`
     }
-    
+
     // Sinon (Codespace, production, etc.), utiliser l'origin courant
-    return `${window.location.origin}${window.location.pathname}?role=controller`
+    return `${window.location.origin}/controller`
   }, [])
 
   useEffect(() => {

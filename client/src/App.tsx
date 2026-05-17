@@ -7,13 +7,16 @@ type Role = 'screen' | 'controller'
 
 function App() {
   const initialRole = useMemo<Role>(() => {
+    const isControllerPath = window.location.pathname === '/controller'
+    if (isControllerPath) return 'controller'
+
     const roleParam = new URLSearchParams(window.location.search).get('role')
     if (roleParam === 'controller') return 'controller'
-    
+
     // Fallback: check localStorage pour les PWA lancées depuis écran d'accueil
     const savedRole = localStorage.getItem('selectedRole') as Role | null
     if (savedRole === 'controller') return 'controller'
-    
+
     return 'screen'
   }, [])
 

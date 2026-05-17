@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image" href="./public/icone.PNG" />
-    <link rel="manifest" href="./manifest.json" />
+    <link id="app-manifest" rel="manifest" href="/manifest.json" />
+    <script>
+      if (window.location.pathname === '/controller') {
+        document.getElementById('app-manifest')?.setAttribute('href', '/manifest-controller.json')
+      }
+    </script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
