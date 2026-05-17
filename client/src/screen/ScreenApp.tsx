@@ -117,11 +117,11 @@ export function ScreenApp() {
       // Si c'est local, utiliser l'IP du réseau local
       const protocol = window.location.protocol === 'https:' ? 'https' : 'http'
       const port = window.location.port ? `:${window.location.port}` : ''
-      return `${protocol}://${import.meta.env.VITE_LOCAL_IP}${port}/controller`
+      return `${protocol}://${import.meta.env.VITE_LOCAL_IP}${port}/`
     }
 
     // Sinon (Codespace, production, etc.), utiliser l'origin courant
-    return `${window.location.origin}/controller`
+    return `${window.location.origin}/`
   }, [])
 
   useEffect(() => {

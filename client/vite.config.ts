@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
+    open: '/game',
     proxy: {
       // proxy websocket upgrades from /ws to backend ws server on port 3001
       '/ws': {

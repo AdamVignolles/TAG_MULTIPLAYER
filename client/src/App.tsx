@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo } from 'react'
 import './App.css'
 import { ControllerApp } from './controller/ControllerApp'
 import { ScreenApp } from './screen/ScreenApp'
@@ -7,23 +7,13 @@ type Role = 'screen' | 'controller'
 
 function App() {
   const initialRole = useMemo<Role>(() => {
-    const isControllerPath = window.location.pathname === '/controller'
-    if (isControllerPath) return 'controller'
+    const path = window.location.pathname
 
-    const roleParam = new URLSearchParams(window.location.search).get('role')
-    if (roleParam === 'controller') return 'controller'
+    if (path === '/' || path === '/controller') return 'controller'
+    if (path === '/game' || path === '/home' || path === '/map') return 'screen'
 
-    // Fallback: check localStorage pour les PWA lancées depuis écran d'accueil
-    const savedRole = localStorage.getItem('selectedRole') as Role | null
-    if (savedRole === 'controller') return 'controller'
-
-    return 'screen'
+    return 'controller'
   }, [])
-
-  // Sauvegarder le rôle sélectionné pour PWA
-  useEffect(() => {
-    localStorage.setItem('selectedRole', initialRole)
-  }, [initialRole])
 
   if (initialRole === 'controller') {
     return <ControllerApp />

@@ -1,7 +1,7 @@
 {
-  "name": "TAG MULTIPLAYER",
-  "short_name": "TAG",
-  "description": "A multiplayer tag game",
+  "name": "TAG MULTIPLAYER Controller",
+  "short_name": "TAG Ctrl",
+  "description": "Controller app for TAG MULTIPLAYER",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
