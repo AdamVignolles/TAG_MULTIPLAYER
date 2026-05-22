@@ -691,7 +691,6 @@ export function ScreenApp() {
         {gameState?.areaState?.zones.map((zone) => {
           const controllingTeam = zone.controllingTeam
           const color = controllingTeam ? TEAM_COLORS[controllingTeam] : 'rgba(255,255,255,0.25)'
-          const homeColor = TEAM_COLORS[zone.homeSide]
           const score = controllingTeam ? (gameState.areaScores?.[controllingTeam] ?? 0) : 0
           const ratio = Math.min(1, Math.abs(zone.control) / 100)
 
