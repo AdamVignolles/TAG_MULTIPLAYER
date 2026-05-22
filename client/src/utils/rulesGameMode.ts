@@ -49,6 +49,16 @@ const modeDescriptions: Record<string, ModeDescription> = {
       'A la fin de la partie, il n\'y a qu\'un seul gagnant, le dernier joueur non-TAG restant',
     ],
   },
+  area: {
+    title: 'Contrôle de zone',
+    description: 'Contrôlez des zones pour marquer des points; le premier à atteindre le score gagne.',
+    rules: [
+      'Plusieurs zones apparaissent sur la carte',
+      "Restez seul dans une zone pour la capturer (2s)",
+      "Une zone contrôlée rapporte 1 point par seconde au contrôleur",
+      'Le premier joueur à atteindre le score cible gagne, sinon le meilleur score à la fin du temps gagne',
+    ],
+  },
 };
 
 export const getModeDescription = (mode: string) => {
@@ -78,6 +88,12 @@ export const getGameStats = (mode: string, playerCount: number): GameStats => {
       duree: '~ 3 min',
       gagnant: '1',
       tag: '1-11',
+      minPlayers: 2,
+    },
+    area: {
+      duree: '2:00 min',
+      gagnant: '1',
+      tag: '—',
       minPlayers: 2,
     },
   };

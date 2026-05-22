@@ -1,5 +1,50 @@
 export type Role = 'screen' | 'controller'
-export type GameMode = 'classic' | 'zombie' | 'bomb'
+export type GameMode = 'classic' | 'zombie' | 'bomb' | 'area'
+export type AreaTeam = 'green' | 'blue'
+export type AreaFlagPower = 'boost_control' | 'slow_enemy' | 'deny_capture'
+
+export type AreaZoneView = {
+  id: string
+  homeSide: AreaTeam
+  x: number
+  y: number
+  w: number
+  h: number
+  control: number
+  controllingTeam: AreaTeam | null
+}
+
+export type AreaFlagView = {
+  id: string
+  power: AreaFlagPower
+  x: number
+  y: number
+  w: number
+  h: number
+  spawnedAt: number
+  expiresAt: number
+  collectedByTeam: AreaTeam | null
+}
+
+export type AreaTeamStateView = {
+  team: AreaTeam
+  members: string[]
+  tagPlayerId: string | null
+  score: number
+  buffs: {
+    controlBoostUntil: number
+    enemySlowUntil: number
+    enemyCaptureBlockedUntil: number
+  }
+}
+
+export type AreaStateView = {
+  zones: AreaZoneView[]
+  flag: AreaFlagView | null
+  teams: Record<AreaTeam, AreaTeamStateView>
+  nextFlagSpawnAt: number
+  nextTagRotationAt: number
+}
 
 export type CharacterType = 'blue' | 'yellow' | 'green' | 'purple' | 'red'
 
@@ -14,6 +59,8 @@ export type PlayerView = {
   vy?: number
   onGround?: boolean
   isTag?: boolean
+  areaTeam?: AreaTeam | null
+  areaTag?: boolean
   bombCounter?: number
   isEliminated?: boolean
 }
@@ -44,6 +91,8 @@ export type StateMessage = {
   countdownMs?: number
   tagPlayerId: string | null
   players: PlayerView[]
+  areaState?: AreaStateView
+  areaScores?: Record<AreaTeam, number>
 }
 
 export type GameOverResult = {

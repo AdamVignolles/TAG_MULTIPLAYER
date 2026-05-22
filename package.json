@@ -4,6 +4,7 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
+    "preserver": "node ./script/free-port.mjs 3001",
     "client": "npm run dev --prefix client",
     "server": "npm run dev --prefix server",
     "dev": "npm run server & npm run client",

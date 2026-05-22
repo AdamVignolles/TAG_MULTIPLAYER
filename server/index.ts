@@ -20,10 +20,22 @@ import {
     ZOMBIE_CONFIG,
 } from "./Modes/zombie.ts";
 import { BOMB_CONFIG, getBombCounterForPlayerCount, getInitialTagCountForPlayerCount, initBombMode, updateBombMode, handleBombRoundEnd, handleBombTransfer } from "./Modes/bomb.ts";
+import {
+    AREA_CONFIG,
+    initAreaMode,
+    updateAreaMode,
+    handleAreaRoundEnd,
+    getAreaScores,
+    getAreaState,
+    getAreaPlayerSpeedMultiplier,
+    resetAreaMode,
+    moveAreaFlagTo,
+} from "./Modes/area.ts";
+import type { AreaTeam } from "./Modes/area.ts";
 import type { GameOverResult } from "./Modes/GameOverResult.ts";
 
 type Role = "screen" | "controller";
-type GameMode = "classic" | "zombie" | "bomb";
+type GameMode = "classic" | "zombie" | "bomb" | "area";
 type CharacterType = "blue" | "yellow" | "green" | "purple" | "red";
 
 type JoinMessage = {
@@ -84,6 +96,9 @@ export type Player = {
     isTag: boolean;
     transformationStartTime: number | null;
     transformedFrom: string | null;
+    // Area mode properties
+    areaTeam: AreaTeam | null;
+    areaTag: boolean;
     // Bomb mode properties
     bombCounter: number;
     bombCounterStartTime: number;
@@ -139,6 +154,7 @@ const MODE_CONFIG: Record<GameMode, {
     classic: CLASSIC_CONFIG,
     zombie: ZOMBIE_CONFIG,
     bomb: BOMB_CONFIG,
+    area: AREA_CONFIG,
 };
 
 const CHARACTERS: CharacterType[] = ["blue", "yellow", "green", "purple", "red"];
@@ -309,6 +325,8 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
         isTag: false,
         transformationStartTime: null,
         transformedFrom: null,
+        areaTeam: null,
+        areaTag: false,
         bombCounter: 0,
         bombCounterStartTime: 0,
         bombCounterPersonal: 0,
@@ -382,6 +400,8 @@ function resetRoundIfNeeded() {
         gameOverResult = handleZombieRoundEnd(players);
     } else if (gameMode === "bomb") {
         gameOverResult = handleBombRoundEnd(players);
+    } else if (gameMode === "area") {
+        gameOverResult = handleAreaRoundEnd(players);
     } else {
         gameOverResult = handleClassicRoundEnd(tagPlayerId, players);
     }
@@ -409,6 +429,8 @@ function updateGame(dt: number) {
                 remainingMs: roundDurationMs,
                 countdownMs,
                 tagPlayerId,
+                areaState: gameMode === "area" ? getAreaState() : undefined,
+                areaScores: gameMode === "area" ? getAreaScores() : undefined,
                 players: [...players.values()].map((p) => ({
                     id: p.id,
                     name: p.name,
@@ -420,6 +442,8 @@ function updateGame(dt: number) {
                     onGround: p.onGround,
                     radius: PLAYER_RADIUS,
                     isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
+                    areaTeam: gameMode === "area" ? p.areaTeam : undefined,
+                    areaTag: gameMode === "area" ? p.areaTag : undefined,
                     bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
                     isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
                 })),
@@ -450,6 +474,8 @@ function updateGame(dt: number) {
                 speed = getZombieSpeed(player, mode.baseSpeed, mode.tagSpeedBonus);
             } else if (gameMode === "classic") {
                 speed = getClassicSpeed(player, tagPlayerId, mode.baseSpeed, mode.tagSpeedBonus);
+            } else if (gameMode === "area") {
+                speed = mode.baseSpeed * getAreaPlayerSpeedMultiplier(player.id);
             }
             player.vx = horizontal * speed;
 
@@ -620,7 +646,7 @@ function updateGame(dt: number) {
                         handleBombTransfer(tagger, candidate, bombTagPlayerIds, broadcast);
                         lastTagTs = Date.now();
                         break tagOuterLoop;
-                    } else if (gameMode !== "zombie" && gameMode !== "bomb") {
+                    } else if (gameMode === "classic") {
                         tagPlayerId = candidate.id;
                         lastTagTs = Date.now();
                         broadcast({
@@ -662,6 +688,45 @@ function updateGame(dt: number) {
             }
         }
 
+        // Area mode: update zones, drapeaux and scoring
+        if (gameMode === "area") {
+            const areaGameOver = updateAreaMode(dt, players, broadcast);
+            if (areaGameOver) {
+                gameStarted = false;
+                broadcast({ type: "game_over_result", result: areaGameOver });
+            }
+            // Ensure any spawned flag snaps to a nearby map block (tile)
+            try {
+                const areaState = getAreaState();
+                if (areaState.flag) {
+                    const fx = areaState.flag.x;
+                    const fy = areaState.flag.y;
+                    let best: Tile | null = null;
+                    let bestDist = Infinity;
+                    for (const tile of tiles) {
+                        const cx = tile.x + tile.w / 2;
+                        const cy = tile.y - PLAYER_RADIUS; // place flag slightly above tile top
+                        const dx = fx - cx;
+                        const dy = fy - cy;
+                        const d = dx * dx + dy * dy;
+                        if (d < bestDist) {
+                            bestDist = d;
+                            best = tile;
+                        }
+                    }
+
+                    if (best) {
+                        const cx = Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, best.x + best.w / 2));
+                        const cy = best.y - PLAYER_RADIUS;
+                        moveAreaFlagTo(cx, cy);
+                        broadcast({ type: 'area_flag_snapped', flagId: areaState.flag.id, x: cx, y: cy });
+                    }
+                }
+            } catch (err) {
+                // ignore snapping errors
+            }
+        }
+
     resetRoundIfNeeded();
 
     broadcast({
@@ -671,6 +736,8 @@ function updateGame(dt: number) {
         remainingMs: getRemainingMs(),
         countdownMs: 0,
         tagPlayerId,
+        areaState: gameMode === "area" ? getAreaState() : undefined,
+        areaScores: gameMode === "area" ? getAreaScores() : undefined,
             players: [...players.values()].map((p) => ({
             id: p.id,
             name: p.name,
@@ -682,6 +749,8 @@ function updateGame(dt: number) {
             onGround: p.onGround,
             radius: PLAYER_RADIUS,
             isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
+            areaTeam: gameMode === "area" ? p.areaTeam : undefined,
+            areaTag: gameMode === "area" ? p.areaTag : undefined,
             bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
             isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
             })),
@@ -802,6 +871,11 @@ wss.on("connection", (ws: WebSocket) => {
                 return;
             }
 
+            if (gameMode === "area" && players.size % 2 !== 0) {
+                send(ws, { type: "error", message: "Le mode Conquete d'equipe requiert un nombre pair de joueurs" });
+                return;
+            }
+
             const minPlayersRequired = MODE_CONFIG[gameMode].minPlayers;
             if (players.size < minPlayersRequired) {
                 send(ws, { type: "error", message: `Minimum ${minPlayersRequired} joueurs requis pour ce mode (actuellement ${players.size})` });
@@ -869,6 +943,11 @@ wss.on("connection", (ws: WebSocket) => {
                 initBombMode(players, bombTagPlayerIds);
             }
 
+            // Initialize area mode
+            if (gameMode === "area") {
+                initAreaMode(players, tiles, ARENA_WIDTH, FLOOR_Y);
+            }
+
             broadcast({
                 type: "game_started",
                 mode: gameMode,
@@ -903,7 +982,11 @@ wss.on("connection", (ws: WebSocket) => {
                 player.isTag = false;
                 player.transformationStartTime = null;
                 player.transformedFrom = null;
+                player.areaTeam = null;
+                player.areaTag = false;
             });
+
+            resetAreaMode(players);
 
             broadcastLobby();
             return;

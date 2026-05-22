@@ -1,5 +1,5 @@
 export interface GameOverResult {
-    mode: 'classic' | 'zombie' | 'bomb';
+    mode: 'classic' | 'zombie' | 'bomb' | 'area';
     reason: string;
     winners: {
         id: string;

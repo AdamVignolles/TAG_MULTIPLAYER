@@ -41,6 +41,18 @@ const MODE_LABEL: Record<GameMode, string> = {
   classic: 'Classique',
   zombie: 'Zombie',
   bomb: 'Bombe',
+  area: 'Contrôle de zone',
+}
+
+const TEAM_COLORS = {
+  green: '#00ff6a',
+  blue: '#007bff',
+}
+
+const FLAG_LABELS = {
+  boost_control: 'Contrôle +',
+  slow_enemy: 'Ralentit',
+  deny_capture: 'Blocage',
 }
 
 const TILE_COLORS: Record<string, string> = {
@@ -411,6 +423,12 @@ export function ScreenApp() {
               >
                 {getFrenchMode('bomb')}
               </button>
+              <button
+                className={lobby.mode === 'area' ? 'active' : ''}
+                onClick={() => sendMode('area')}
+              >
+                {getFrenchMode('area')}
+              </button>
             </div>
 
             <button className="launch-button" onClick={startGame}>
@@ -579,6 +597,25 @@ export function ScreenApp() {
             <span className="hud-pill-label">Joueurs</span>
             <strong>{playerCount}</strong>
           </div>
+          {lobby.mode === 'area' && gameState?.areaScores && (
+            <div className="hud-pill area-score-pill">
+              <span className="hud-pill-label">Scores</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {Object.entries(gameState.areaScores)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 2)
+                  .map(([id, score]) => {
+                    const color = TEAM_COLORS[id as keyof typeof TEAM_COLORS] ?? '#fff'
+                    return (
+                      <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 12, height: 12, background: color, borderRadius: 3 }} />
+                        <strong style={{ fontSize: 12 }}>{Math.floor(score)}</strong>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -609,11 +646,18 @@ export function ScreenApp() {
         {(gameState?.players ?? [])
           .filter(player => !(gameState?.mode === 'bomb' && player.isEliminated))
           .map((player) => {
-          const isTag = gameState?.mode === 'zombie' ? player.isTag : (gameState?.mode === 'bomb' ? player.isTag : gameState?.tagPlayerId === player.id)
+          const isTag = gameState?.mode === 'zombie'
+            ? player.isTag
+            : gameState?.mode === 'bomb'
+              ? player.isTag
+              : gameState?.mode === 'area'
+                ? player.areaTag
+                : gameState?.tagPlayerId === player.id
           const spriteSize = 32
           const frameIndex = getAnimationFrame(player)
           const backgroundYOffset = frameIndex * spriteSize
           const playerLabel = (player.name ?? '').slice(0, 2).toUpperCase() || player.id || '--'
+          const teamColor = player.areaTeam ? TEAM_COLORS[player.areaTeam] : undefined
 
           return (
             <div key={player.id} style={{ position: 'absolute', left: `${player.x}px`, top: `${player.y}px`, transform: 'translate(-50%, -50%)', width: 0, height: 0 }}>
@@ -630,6 +674,8 @@ export function ScreenApp() {
                   backgroundSize: `${spriteSize}px ${6 * spriteSize}px`,
                   backgroundRepeat: 'no-repeat',
                   imageRendering: 'pixelated' as any,
+                  outline: teamColor ? `2px solid ${teamColor}` : undefined,
+                  border: teamColor ? `2px solid ${teamColor}` : undefined
                 }}
                 title={player.name}
               >
@@ -640,6 +686,78 @@ export function ScreenApp() {
             </div>
           )
         })}
+
+        {/* Area zones (visualisation) */}
+        {gameState?.areaState?.zones.map((zone) => {
+          const controllingTeam = zone.controllingTeam
+          const color = controllingTeam ? TEAM_COLORS[controllingTeam] : 'rgba(255,255,255,0.25)'
+          const homeColor = TEAM_COLORS[zone.homeSide]
+          const score = controllingTeam ? (gameState.areaScores?.[controllingTeam] ?? 0) : 0
+          const ratio = Math.min(1, Math.abs(zone.control) / 100)
+
+          return (
+            <div
+              key={zone.id}
+              className={`area-zone ${controllingTeam ? 'controlled' : 'neutral'}`}
+              style={{
+                position: 'absolute',
+                left: `${zone.x}px`,
+                top: `${zone.y}px`,
+                width: `${zone.w}px`,
+                height: `${zone.h}px`,
+                border: `3px solid ${controllingTeam ? color : '#ff4d4d'}`,
+                background: controllingTeam ? `${color}33` : 'transparent',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                padding: '6px',
+                boxSizing: 'border-box',
+                pointerEvents: 'none',
+                transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+              }}
+            >
+              <div style={{ color: '#fff', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.6)' }}>{zone.id}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                <div style={{ color: '#fff', fontSize: 12, textShadow: '0 1px 0 rgba(0,0,0,0.6)' }}>{controllingTeam ? `${Math.floor(score)}` : ''}</div>
+                <div style={{ width: 84, height: 10, background: 'rgba(0,0,0,0.45)', borderRadius: 6, padding: 2, boxSizing: 'border-box' }}>
+                  <div style={{ width: `${ratio * 100}%`, height: '100%', background: `linear-gradient(90deg, ${color}, ${color})`, borderRadius: 4, boxShadow: `0 0 8px ${color}66` }} />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {gameState?.areaState?.flag && (
+          <div
+            className="area-flag"
+            style={{
+              position: 'absolute',
+              left: `${gameState.areaState.flag.x}px`,
+              top: `${gameState.areaState.flag.y}px`,
+              width: `${gameState.areaState.flag.w}px`,
+              height: `${gameState.areaState.flag.h}px`,
+              transform: 'translate(-50%, -50%)',
+              borderRadius: 12,
+              border: '2px solid rgba(255,255,255,0.9)',
+              background: gameState.areaState.flag.power === 'boost_control'
+                ? 'linear-gradient(135deg, #fff176, #ffb300)'
+                : gameState.areaState.flag.power === 'slow_enemy'
+                  ? 'linear-gradient(135deg, #7dd3fc, #2563eb)'
+                  : 'linear-gradient(135deg, #fca5a5, #ef4444)',
+              boxShadow: '0 0 18px rgba(255,255,255,0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#111',
+              fontSize: 11,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              pointerEvents: 'none',
+            }}
+          >
+            {FLAG_LABELS[gameState.areaState.flag.power]}
+          </div>
+        )}
 
         {/* Death animations */}
         {(gameState?.players ?? [])
