@@ -51,12 +51,14 @@ const modeDescriptions: Record<string, ModeDescription> = {
   },
   area: {
     title: 'Contrôle de zone',
-    description: 'Contrôlez des zones pour marquer des points; le premier à atteindre le score gagne.',
+    description: 'Contrôlez des zones pour marquer des points',
     rules: [
+      'Il y a deux équipes (Bleu et verte) qui s\'affrontent pour le contrôle de zones sur la carte',
       'Plusieurs zones apparaissent sur la carte',
       "Restez dans une zone pour la capturer et la contrôler",
       "Une zone contrôlée rapporte 1 point par seconde à l'équipe qui la contrôle",
       'Le meilleur temps à la fin de la partie gagne',
+      'Des drapeaux apparaisent aléatoirement sur la carte, le joueur qui les capture apporte des bonus à son équipe ou des malus à l\'équipe adverse',
     ],
   },
 };
