@@ -53,12 +53,14 @@ const FLAG_LABELS = {
   boost_control: 'Contrôle +',
   slow_enemy: 'Ralentit',
   deny_capture: 'Blocage',
+  tag_self: 'TAG',
 }
 
 const FLAG_POWER_CLASSES = {
   boost_control: 'area-flag--boost-control',
   slow_enemy: 'area-flag--slow-enemy',
   deny_capture: 'area-flag--deny-capture',
+  tag_self: 'area-flag--tag-self',
 }
 
 const TILE_COLORS: Record<string, string> = {
@@ -372,7 +374,9 @@ export function ScreenApp() {
       ? 'linear-gradient(135deg, #fff176, #ffb300)'
       : gameState?.areaState?.flag?.power === 'slow_enemy'
         ? 'linear-gradient(135deg, #7dd3fc, #2563eb)'
-        : 'linear-gradient(135deg, #fca5a5, #ef4444)',
+        : gameState?.areaState?.flag?.power === 'tag_self'
+          ? 'linear-gradient(135deg, #fecaca, #dc2626)'
+          : 'linear-gradient(135deg, #fca5a5, #ef4444)',
   }
 
   const areaFlag = gameState?.areaState?.flag ?? null
@@ -687,6 +691,7 @@ export function ScreenApp() {
               : gameState?.mode === 'area'
                 ? player.areaTag
                 : gameState?.tagPlayerId === player.id
+          const isFrozen = gameState?.mode === 'area' ? Boolean(player.areaFrozen) : false
           const spriteSize = 32
           const frameIndex = getAnimationFrame(player)
           const backgroundYOffset = frameIndex * spriteSize
@@ -696,7 +701,7 @@ export function ScreenApp() {
           return (
             <div key={player.id} style={{ position: 'absolute', left: `${player.x}px`, top: `${player.y}px`, transform: 'translate(-50%, -50%)', width: 0, height: 0 }}>
               <div
-                className={`player ${isTag ? 'tag' : ''}`}
+                className={`player ${isTag ? 'tag' : ''} ${isFrozen ? 'frozen' : ''}`}
                 style={{
                   position: 'absolute',
                   left: `${-spriteSize / 2}px`,
@@ -716,6 +721,11 @@ export function ScreenApp() {
                 <div className="player-label">
                   {playerLabel}
                 </div>
+                {isFrozen && (
+                  <div className="player-state-badge">
+                    IMMOBILE
+                  </div>
+                )}
               </div>
             </div>
           )

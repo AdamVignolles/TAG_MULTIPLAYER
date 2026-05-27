@@ -3,7 +3,7 @@ import type { Tile } from "../BlocMap.ts";
 import type { GameOverResult } from "./GameOverResult.ts";
 
 export type AreaTeam = "green" | "blue";
-export type AreaFlagPower = "boost_control" | "slow_enemy" | "deny_capture";
+export type AreaFlagPower = "boost_control" | "slow_enemy" | "deny_capture" | "tag_self";
 
 export const AREA_CONFIG = {
     label: "Conquete d'equipe",
@@ -61,14 +61,14 @@ export type AreaStateSnapshot = {
 };
 
 const FLAG_DURATION_MS = 15000;
-const TAG_ROTATION_MS = 15000;
+export const AREA_TAG_DURATION_MS = 10000;
 const FLAG_BUFF_DURATION_MS = 10000;
 const CONTROL_THRESHOLD = 100;
 const CONTROL_RATE_PER_PLAYER = 18;
 const CONTROL_SCORE_PER_SECOND = 1;
 const FLAG_SIZE = 28;
 const PLAYER_RADIUS = 16;
-const FLAG_POWER_LIST: AreaFlagPower[] = ["boost_control", "slow_enemy", "deny_capture"];
+const FLAG_POWER_LIST: AreaFlagPower[] = ["boost_control", "slow_enemy", "deny_capture", "tag_self"];
 
 type AreaRuntime = {
     arenaWidth: number;
@@ -194,7 +194,33 @@ function syncTeamState(players: Map<string, Player>): void {
         const team = runtime.playerTeams.get(player.id) ?? null;
         player.areaTeam = team;
         player.areaTag = false;
+        player.areaTagUntil = 0;
+        player.areaFrozenUntil = 0;
+        player.areaFrozenMinUntil = 0;
     });
+}
+
+function clearAreaTagState(players: Map<string, Player>): void {
+    snapshot.teams.green.tagPlayerId = null;
+    snapshot.teams.blue.tagPlayerId = null;
+
+    players.forEach((player) => {
+        player.areaTag = false;
+        player.areaTagUntil = 0;
+    });
+}
+
+function setAreaTagger(players: Map<string, Player>, player: Player, now: number): void {
+    clearAreaTagState(players);
+    player.areaTag = true;
+    player.areaTagUntil = now + AREA_TAG_DURATION_MS;
+    player.areaFrozenUntil = 0;
+    player.areaFrozenMinUntil = 0;
+
+    const team = player.areaTeam;
+    if (team) {
+        snapshot.teams[team].tagPlayerId = player.id;
+    }
 }
 
 function spawnFlag(now: number): AreaFlag {
@@ -258,6 +284,10 @@ function applyPower(team: AreaTeam, power: AreaFlagPower, now: number): void {
     const ally = teamState(team);
     const enemy = teamState(oppositeTeam(team));
 
+    if (power === "tag_self") {
+        return;
+    }
+
     if (power === "boost_control") {
         ally.buffs.controlBoostUntil = Math.max(ally.buffs.controlBoostUntil, now + FLAG_BUFF_DURATION_MS);
         return;
@@ -286,6 +316,9 @@ function collectFlag(players: Map<string, Player>, now: number, broadcast: (msg:
         if (team) {
             applyPower(team, snapshot.flag.power, now);
         }
+        if (snapshot.flag.power === "tag_self") {
+            setAreaTagger(players, player, now);
+        }
         broadcast({
             type: "area_flag_collected",
             flagId: snapshot.flag.id,
@@ -299,6 +332,21 @@ function collectFlag(players: Map<string, Player>, now: number, broadcast: (msg:
         snapshot.nextFlagSpawnAt = now + FLAG_DURATION_MS;
         return;
     }
+}
+
+export function updateAreaTagLifecycle(players: Map<string, Player>, now: number): void {
+    players.forEach((player) => {
+        if (!player.areaTag || player.areaTagUntil <= 0 || now < player.areaTagUntil) {
+            return;
+        }
+
+        player.areaTag = false;
+        player.areaTagUntil = 0;
+
+        if (player.areaTeam && snapshot.teams[player.areaTeam].tagPlayerId === player.id) {
+            snapshot.teams[player.areaTeam].tagPlayerId = null;
+        }
+    });
 }
 
 function updateZones(dt: number, players: Map<string, Player>, now: number): void {
@@ -428,6 +476,9 @@ export function resetAreaMode(players: Map<string, Player>): void {
     players.forEach((player) => {
         player.areaTeam = null;
         player.areaTag = false;
+        player.areaTagUntil = 0;
+        player.areaFrozenUntil = 0;
+        player.areaFrozenMinUntil = 0;
     });
 
     runtime.playerTeams.clear();

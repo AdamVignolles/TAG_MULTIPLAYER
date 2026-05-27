@@ -587,8 +587,6 @@ button {
 .hud-pill-label {
   font-size: 0.68rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #976229;
 }
 
 .home-button {
@@ -637,15 +635,19 @@ button {
 }
 
 .area-flag--boost-control {
-  box-shadow: 0 0 18px rgba(255, 179, 0, 0.5);
+  box-shadow: 0 0 18px rgba(255, 251, 2, 0.897);
 }
 
 .area-flag--slow-enemy {
-  box-shadow: 0 0 18px rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 18px rgba(10, 94, 55, 0.904);
 }
 
 .area-flag--deny-capture {
-  box-shadow: 0 0 18px rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 18px rgba(14, 5, 5, 0.849);
+}
+
+.area-flag--tag-self {
+  box-shadow: 0 0 18px rgba(230, 12, 12, 0.7);
 }
 
 .area-flag-label {
@@ -663,6 +665,32 @@ button {
   background: rgba(255, 255, 255, 0.9);
   color: #1b1b1b;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.player.frozen {
+  filter: grayscale(0.65) brightness(0.92);
+}
+
+.player.frozen .player-label {
+  border-color: #9ca3af;
+  background: rgba(244, 244, 245, 0.96);
+  color: #4b5563;
+}
+
+.player-state-badge {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.95);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 @keyframes area-flag-float {

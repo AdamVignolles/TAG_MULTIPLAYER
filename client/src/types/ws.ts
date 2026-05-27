@@ -1,7 +1,7 @@
 export type Role = 'screen' | 'controller'
 export type GameMode = 'classic' | 'zombie' | 'bomb' | 'area'
 export type AreaTeam = 'green' | 'blue'
-export type AreaFlagPower = 'boost_control' | 'slow_enemy' | 'deny_capture'
+export type AreaFlagPower = 'boost_control' | 'slow_enemy' | 'deny_capture' | 'tag_self'
 
 export type AreaZoneView = {
   id: string
@@ -61,6 +61,7 @@ export type PlayerView = {
   isTag?: boolean
   areaTeam?: AreaTeam | null
   areaTag?: boolean
+  areaFrozen?: boolean
   bombCounter?: number
   isEliminated?: boolean
 }

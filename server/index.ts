@@ -24,6 +24,7 @@ import {
     AREA_CONFIG,
     initAreaMode,
     updateAreaMode,
+    updateAreaTagLifecycle,
     handleAreaRoundEnd,
     getAreaScores,
     getAreaState,
@@ -99,6 +100,10 @@ export type Player = {
     // Area mode properties
     areaTeam: AreaTeam | null;
     areaTag: boolean;
+    areaTagUntil: number;
+    areaFrozenUntil: number;
+    areaFrozenMinUntil: number;
+    areaFrozenGraceUntil: number;
     // Bomb mode properties
     bombCounter: number;
     bombCounterStartTime: number;
@@ -136,6 +141,9 @@ type ClientMeta = {
 
 const TICK_MS = 33;
 const PLAYER_RADIUS = 16;
+const AREA_FREEZE_MIN_MS = 2000;
+const AREA_FREEZE_MAX_MS = 7000;
+const AREA_RELEASE_GRACE_MS = 500;
 const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
@@ -327,6 +335,10 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
         transformedFrom: null,
         areaTeam: null,
         areaTag: false,
+        areaTagUntil: 0,
+        areaFrozenUntil: 0,
+        areaFrozenMinUntil: 0,
+        areaFrozenGraceUntil: 0,
         bombCounter: 0,
         bombCounterStartTime: 0,
         bombCounterPersonal: 0,
@@ -336,6 +348,71 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
     spawnPlayerOnMapBlock(player);
 
     return player;
+}
+
+function isAreaTagActive(player: Player, now: number): boolean {
+    return player.areaTag && player.areaTagUntil > now;
+}
+
+function clearAreaFreeze(player: Player, now: number): void {
+    player.areaFrozenUntil = 0;
+    player.areaFrozenMinUntil = 0;
+    player.areaFrozenGraceUntil = now + AREA_RELEASE_GRACE_MS;
+}
+
+function freezeAreaPlayer(player: Player, now: number): void {
+    player.areaFrozenUntil = now + AREA_FREEZE_MAX_MS;
+    player.areaFrozenMinUntil = now + AREA_FREEZE_MIN_MS;
+}
+
+function handleAreaTagInteractions(now: number): void {
+    const activeTaggers = [...players.values()].filter((player) => isAreaTagActive(player, now));
+
+    if (activeTaggers.length === 0) {
+        return;
+    }
+
+    const touchRangeSq = (PLAYER_RADIUS * 2) ** 2;
+
+    for (const candidate of players.values()) {
+        let touchedByTagger = false;
+        let rescueTouch = false;
+
+        for (const tagger of activeTaggers) {
+            if (tagger.id === candidate.id) {
+                continue;
+            }
+
+            const dx = candidate.x - tagger.x;
+            const dy = candidate.y - tagger.y;
+            if (dx * dx + dy * dy >= touchRangeSq) {
+                continue;
+            }
+
+            touchedByTagger = true;
+
+            if (
+                now < candidate.areaFrozenGraceUntil ||
+                candidate.areaFrozenUntil > now &&
+                candidate.areaTeam &&
+                tagger.areaTeam === candidate.areaTeam &&
+                now >= candidate.areaFrozenMinUntil
+            ) {
+                rescueTouch = true;
+            }
+        }
+
+        if (candidate.areaFrozenUntil > now) {
+            if (now >= candidate.areaFrozenUntil || rescueTouch) {
+                clearAreaFreeze(candidate, now);
+            }
+            continue;
+        }
+
+        if (touchedByTagger && now >= candidate.areaFrozenGraceUntil) {
+            freezeAreaPlayer(candidate, now);
+        }
+    }
 }
 
 function removePlayer(playerId: string) {
@@ -419,6 +496,7 @@ function updateGame(dt: number) {
         return;
     }
 
+    const now = Date.now();
     const countdownMs = getCountdownMs();
     if (!roundHasBegun) {
         if (countdownMs > 0) {
@@ -444,6 +522,7 @@ function updateGame(dt: number) {
                     isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
                     areaTeam: gameMode === "area" ? p.areaTeam : undefined,
                     areaTag: gameMode === "area" ? p.areaTag : undefined,
+                    areaFrozen: gameMode === "area" ? p.areaFrozenUntil > now : undefined,
                     bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
                     isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
                 })),
@@ -456,12 +535,22 @@ function updateGame(dt: number) {
         lastTagTs = Date.now();
     }
 
+    if (gameMode === "area") {
+        updateAreaTagLifecycle(players, now);
+    }
+
     const mode = MODE_CONFIG[gameMode];
 
     players.forEach((player) => {
         const prevY = player.y;
         const wasOnGround = player.onGround;
         let jumpedThisTick = false;
+
+        if (gameMode === "area" && player.areaFrozenUntil > now) {
+            player.vx = 0;
+            player.vy = 0;
+            return;
+        }
 
         // In zombie mode, immobilize during transformation
         if (gameMode === "zombie" && player.transformationStartTime) {
@@ -608,7 +697,9 @@ function updateGame(dt: number) {
         }
     });
 
-    if (Date.now() - lastTagTs > TAG_COOLDOWN_MS) {
+    if (gameMode === "area") {
+        handleAreaTagInteractions(now);
+    } else if (Date.now() - lastTagTs > TAG_COOLDOWN_MS) {
         // Collect all taggers based on game mode
         const taggers: Player[] = [];
         
@@ -751,6 +842,7 @@ function updateGame(dt: number) {
             isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
             areaTeam: gameMode === "area" ? p.areaTeam : undefined,
             areaTag: gameMode === "area" ? p.areaTag : undefined,
+            areaFrozen: gameMode === "area" ? p.areaFrozenUntil > now : undefined,
             bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
             isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
             })),
@@ -984,6 +1076,10 @@ wss.on("connection", (ws: WebSocket) => {
                 player.transformedFrom = null;
                 player.areaTeam = null;
                 player.areaTag = false;
+                player.areaTagUntil = 0;
+                player.areaFrozenUntil = 0;
+                player.areaFrozenMinUntil = 0;
+                player.areaFrozenGraceUntil = 0;
             });
 
             resetAreaMode(players);
