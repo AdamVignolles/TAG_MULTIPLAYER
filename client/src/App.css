@@ -610,6 +610,72 @@ button {
   filter: brightness(1.08);
 }
 
+.area-flag-shell {
+  position: absolute;
+  pointer-events: none;
+}
+
+.area-flag {
+  position: relative;
+  width: var(--flag-w);
+  min-width: 28px;
+  height: var(--flag-h);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: var(--flag-gradient);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  pointer-events: none;
+  will-change: transform, filter;
+  animation: area-flag-float 2.2s ease-in-out infinite;
+}
+
+.area-flag--boost-control {
+  box-shadow: 0 0 18px rgba(255, 179, 0, 0.5);
+}
+
+.area-flag--slow-enemy {
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.5);
+}
+
+.area-flag--deny-capture {
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.5);
+}
+
+.area-flag-label {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  display: block;
+  width: max-content;
+  white-space: nowrap;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1b1b1b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+@keyframes area-flag-float {
+  0%, 100% {
+    transform: translateY(0);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateY(-3px);
+    filter: brightness(1.06);
+  }
+}
+
 /* ============================================================
    ARENA / TILES / PLAYERS
 ============================================================ */

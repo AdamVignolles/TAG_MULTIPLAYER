@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView, GameOverResult } from '../types/ws'
 import { getSpriteUrl } from '../utils/characterManager'
 import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached } from '../utils/rulesGameMode'
@@ -55,6 +55,12 @@ const FLAG_LABELS = {
   deny_capture: 'Blocage',
 }
 
+const FLAG_POWER_CLASSES = {
+  boost_control: 'area-flag--boost-control',
+  slow_enemy: 'area-flag--slow-enemy',
+  deny_capture: 'area-flag--deny-capture',
+}
+
 const TILE_COLORS: Record<string, string> = {
   solid: '#8b6b47',
   jumpBoost: '#4a7fff',
@@ -101,6 +107,7 @@ export function ScreenApp() {
   const [status, setStatus] = useState('Deconnecte')
   const [, setLog] = useState('')
   const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [lobby, setLobby] = useState<LobbyMessage>({
     type: 'lobby',
     mode: 'classic',
@@ -320,6 +327,16 @@ export function ScreenApp() {
     previousCountdownMsRef.current = countdownMs
   }, [countdownMs])
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now())
+    }, 100)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
+
   function sendMode(mode: GameMode) {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
     wsRef.current.send(JSON.stringify({ type: 'set_mode', mode }))
@@ -345,6 +362,23 @@ export function ScreenApp() {
 
     setLog('Retour a l accueil...')
   }
+
+  const areaFlagStyle: CSSProperties & Record<string, string> = {
+    '--flag-x': `${gameState?.areaState?.flag?.x ?? 0}px`,
+    '--flag-y': `${gameState?.areaState?.flag?.y ?? 0}px`,
+    '--flag-w': `${gameState?.areaState?.flag?.w ?? 0}px`,
+    '--flag-h': `${gameState?.areaState?.flag?.h ?? 0}px`,
+    '--flag-gradient': gameState?.areaState?.flag?.power === 'boost_control'
+      ? 'linear-gradient(135deg, #fff176, #ffb300)'
+      : gameState?.areaState?.flag?.power === 'slow_enemy'
+        ? 'linear-gradient(135deg, #7dd3fc, #2563eb)'
+        : 'linear-gradient(135deg, #fca5a5, #ef4444)',
+  }
+
+  const areaFlag = gameState?.areaState?.flag ?? null
+  const areaFlagOpacity = areaFlag
+    ? Math.max(0.2, Math.min(1, (areaFlag.expiresAt - nowMs) / 2000))
+    : 1
 
   if (isPortrait) {
     return (
@@ -728,33 +762,20 @@ export function ScreenApp() {
 
         {gameState?.areaState?.flag && (
           <div
-            className="area-flag"
+            className="area-flag-shell"
             style={{
               position: 'absolute',
               left: `${gameState.areaState.flag.x}px`,
               top: `${gameState.areaState.flag.y}px`,
-              width: `${gameState.areaState.flag.w}px`,
-              height: `${gameState.areaState.flag.h}px`,
               transform: 'translate(-50%, -50%)',
-              borderRadius: 12,
-              border: '2px solid rgba(255,255,255,0.9)',
-              background: gameState.areaState.flag.power === 'boost_control'
-                ? 'linear-gradient(135deg, #fff176, #ffb300)'
-                : gameState.areaState.flag.power === 'slow_enemy'
-                  ? 'linear-gradient(135deg, #7dd3fc, #2563eb)'
-                  : 'linear-gradient(135deg, #fca5a5, #ef4444)',
-              boxShadow: '0 0 18px rgba(255,255,255,0.45)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#111',
-              fontSize: 11,
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              pointerEvents: 'none',
+              opacity: areaFlagOpacity,
             }}
           >
-            {FLAG_LABELS[gameState.areaState.flag.power]}
+            <span className="area-flag-label">{FLAG_LABELS[gameState.areaState.flag.power]}</span>
+            <div
+              className={`area-flag ${FLAG_POWER_CLASSES[gameState.areaState.flag.power]}`}
+              style={areaFlagStyle}
+            />
           </div>
         )}
 
