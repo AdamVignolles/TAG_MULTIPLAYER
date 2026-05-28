@@ -108,6 +108,10 @@ export const isMinPlayersReached = (playerCount: number, minPlayers: number): bo
   return playerCount >= minPlayers;
 };
 
+export const isAreaPlayerCountEven = (playerCount: number): boolean => {
+  return playerCount % 2 === 0;
+};
+
 export const getFrenchMode = (mode: string) => {
   const description = modeDescriptions[mode];
   return description?.title.toLowerCase() || mode;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView, GameOverResult } from '../types/ws'
 import { getSpriteUrl } from '../utils/characterManager'
-import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached } from '../utils/rulesGameMode'
+import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached, isAreaPlayerCountEven } from '../utils/rulesGameMode'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -496,8 +496,10 @@ export function ScreenApp() {
                   <strong>{getGameStats(lobby.mode, lobby.connectedPlayers).gagnant}</strong>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Nombre de TAG</span>
-                  <strong>{getGameStats(lobby.mode, lobby.connectedPlayers).tag}</strong>
+                  <span className="stat-label">{lobby.mode === 'area' ? 'Équipes équilibrées' : 'Nombre de TAG'}</span>
+                  <strong className={lobby.mode === 'area' ? (isAreaPlayerCountEven(lobby.connectedPlayers) ? 'stat-reached' : 'stat-not-reached') : ''}>
+                    {lobby.mode === 'area' ? (isAreaPlayerCountEven(lobby.connectedPlayers) ? '✓ Oui' : '✗ Non') : getGameStats(lobby.mode, lobby.connectedPlayers).tag}
+                  </strong>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">Joueurs minimum</span>
