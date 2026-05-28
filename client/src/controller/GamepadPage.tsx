@@ -7,7 +7,7 @@ import { getButtonRects, getClosestButtonWithFallbackAndTouchId } from './proxim
 type GamepadPageProps = {
   name: string
   playerLabel: string
-  playerTagState: 'TAG' | 'FREE'
+  playerTagState: 'TAG' | 'FREE' | 'TEAM_GREEN' | 'TEAM_BLUE'
   isFullscreen: boolean
   playerColor: string | null
   bombTimer: number | null
@@ -116,10 +116,33 @@ export function GamepadPage({
           }}>{playerLabel}</span>}
       </div>
         
-        <div className={`player-tag-state ${playerTagState === 'TAG' ? 'tag' : 'free'}`}>
-            <div className={`status-dot ${playerTagState === 'TAG' ? 'tag' : 'free'}`}></div>
-            {playerTagState}
-        </div>
+        {(() => {
+          const getTagStateClass = () => {
+            if (playerTagState === 'TAG') return 'tag'
+            if (playerTagState === 'TEAM_GREEN') return 'team-green'
+            if (playerTagState === 'TEAM_BLUE') return 'team-blue'
+            return 'free'
+          }
+          
+          const getTagStateText = () => {
+            if (playerTagState === 'TEAM_GREEN') return 'TEAM VERT'
+            if (playerTagState === 'TEAM_BLUE') return 'TEAM BLEU'
+            return playerTagState
+          }
+          
+          const getTagStateColor = () => {
+            if (playerTagState === 'TEAM_GREEN') return '#00ff6a'
+            if (playerTagState === 'TEAM_BLUE') return '#007bff'
+            return undefined
+          }
+          
+          return (
+            <div className={`player-tag-state ${getTagStateClass()}`} style={playerTagState.startsWith('TEAM') ? { color: getTagStateColor(), borderColor: getTagStateColor() } : undefined}>
+                <div className={`status-dot ${getTagStateClass()}`}></div>
+                {getTagStateText()}
+            </div>
+          )
+        })()}
 
         <div className="top-buttons-right">
           {bombTimer !== null && (

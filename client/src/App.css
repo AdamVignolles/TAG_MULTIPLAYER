@@ -1412,6 +1412,14 @@ button {
   background:#2be8a0;
   box-shadow:0 0 6px #2be8a0;
 }
+.status-dot.team-green {
+  background:#00ff6a;
+  box-shadow:0 0 6px #00ff6a;
+}
+.status-dot.team-blue {
+  background:#007bff;
+  box-shadow:0 0 6px #007bff;
+}
 
 .player-tag-state {
   display: inline-flex;
@@ -1434,6 +1442,18 @@ button {
   .player-tag-state.free {
   color: #19f04f;
   border: 2px solid rgba(25, 240, 79, 0.3);
+}
+
+.player-tag-state.team-green {
+  color: #00ff6a;
+  border: 2px solid #00ff6a;
+  background-color: rgba(0, 255, 106, 0.08);
+}
+
+.player-tag-state.team-blue {
+  color: #007bff;
+  border: 2px solid #007bff;
+  background-color: rgba(0, 123, 255, 0.08);
 }
 
 

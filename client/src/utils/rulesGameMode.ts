@@ -59,7 +59,7 @@ const modeDescriptions: Record<string, ModeDescription> = {
       "Une zone contrôlée rapporte 1 point par seconde à l'équipe qui la contrôle",
       'Le meilleur temps à la fin de la partie gagne',
       'Des drapeaux apparaisent aléatoirement sur la carte, le joueur qui les capture apporte des bonus à son équipe ou des malus à l\'équipe adverse',
-      'Le drapeau rouge transforme le joueur qui le récupère en TAG pendant 10 secondes',
+      'Le drapeau rouge "TAG" transforme le joueur qui le récupère en TAG pendant 10 secondes',
       'Le joueur touché par ce TAG devient immobile pendant 2 secondes minimum et jusqu\'à 7 secondes, sauf si un coéquipier non immobile le touche pour le libérer',
     ],
   },

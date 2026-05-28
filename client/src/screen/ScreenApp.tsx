@@ -720,7 +720,7 @@ export function ScreenApp() {
                 }}
                 title={player.name}
               >
-                <div className="player-label">
+                <div className="player-label" style={teamColor ? { borderColor: teamColor, borderWidth: '2px', borderStyle: 'solid' } : undefined}>
                   {playerLabel}
                 </div>
                 {isFrozen && (

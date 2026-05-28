@@ -66,7 +66,7 @@ export function ControllerApp() {
   const [nameInput, setNameInput] = useState(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY) ?? '')
   const [name, setName] = useState<string | null>(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY)?.trim() || null)
   const [playerId, setPlayerId] = useState<string | null>(null)
-  const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE'>('FREE')
+  const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE' | 'TEAM_GREEN' | 'TEAM_BLUE'>('FREE')
   const [playerColor, setPlayerColor] = useState<string | null>(null)
   const [bombTimer, setBombTimer] = useState<number | null>(null)
   const [gameState, setGameState] = useState<{ countdownMs?: number } | null>(null)
@@ -202,11 +202,16 @@ export function ControllerApp() {
                 const me = data.players.find((p) => p.id === currentPlayerId)
                 if (!me) return
 
-                const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : (data.mode === 'bomb' ? Boolean(me.isTag) : data.tagPlayerId === me.id)
-                const newTagState = isTag ? 'TAG' : 'FREE'
+                let newTagState: 'TAG' | 'FREE' | 'TEAM_GREEN' | 'TEAM_BLUE'
+                if (data.mode === 'area') {
+                  newTagState = me.areaTeam === 'green' ? 'TEAM_GREEN' : me.areaTeam === 'blue' ? 'TEAM_BLUE' : 'FREE'
+                } else {
+                  const isTag = data.mode === 'zombie' ? Boolean(me.isTag) : (data.mode === 'bomb' ? Boolean(me.isTag) : data.tagPlayerId === me.id)
+                  newTagState = isTag ? 'TAG' : 'FREE'
+                }
                 if (prevTagStateRef.current !== newTagState) {
                   if (newTagState === 'TAG') vibrateBecameTag()
-                  else vibrateBecameFree()
+                  else if (newTagState === 'FREE') vibrateBecameFree()
                   prevTagStateRef.current = newTagState
                 }
                 setPlayerTagState(newTagState)
