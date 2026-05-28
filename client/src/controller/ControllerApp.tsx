@@ -87,7 +87,7 @@ export function ControllerApp() {
   const playerIdRef = useRef<string | null>(null)
   const controllerSessionIdRef = useRef(readStoredValue(CONTROLLER_SESSION_STORAGE_KEY) ?? createControllerSessionId())
   const sentColorForPlayerIdRef = useRef<string | null>(null)
-  const prevTagStateRef = useRef<'TAG' | 'FREE'>('FREE')
+  const prevTagStateRef = useRef<'TAG' | 'FREE' | 'TEAM_GREEN' | 'TEAM_BLUE'>('FREE')
   const prevEliminatedRef = useRef(false)
 
   useEffect(() => {
