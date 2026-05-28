@@ -734,9 +734,28 @@ export function ScreenApp() {
         {/* Area zones (visualisation) */}
         {gameState?.areaState?.zones.map((zone) => {
           const controllingTeam = zone.controllingTeam
-          const color = controllingTeam ? TEAM_COLORS[controllingTeam] : 'rgba(255,255,255,0.25)'
+          const color = controllingTeam ? TEAM_COLORS[controllingTeam] : 'rgb(246, 255, 114)'
           const score = controllingTeam ? (gameState.areaScores?.[controllingTeam] ?? 0) : 0
           const ratio = Math.min(1, Math.abs(zone.control) / 100)
+          
+          // Determine progression color based on which team is capturing
+          const progressionColor = zone.control > 0 ? TEAM_COLORS.green : zone.control < 0 ? TEAM_COLORS.blue : '#888888'
+          
+          // Calculate progression for each side: bottom -> left -> top -> right
+          const perimeter = 2 * (zone.w + zone.h)
+          const progressionPixels = ratio * perimeter
+          
+          // Bottom: 0 to zone.w (right to left)
+          const bottomFilled = Math.min(Math.max(progressionPixels, 0), zone.w)
+          
+          // Left: zone.w to zone.w + zone.h (bottom to top)
+          const leftFilled = Math.min(Math.max(progressionPixels - zone.w, 0), zone.h)
+          
+          // Top: zone.w + zone.h to 2*zone.w + zone.h (left to right)
+          const topFilled = Math.min(Math.max(progressionPixels - zone.w - zone.h, 0), zone.w)
+          
+          // Right: 2*zone.w + zone.h to 2*zone.w + 2*zone.h (top to bottom)
+          const rightFilled = Math.min(Math.max(progressionPixels - 2*zone.w - zone.h, 0), zone.h)
 
           return (
             <div
@@ -757,15 +776,71 @@ export function ScreenApp() {
                 boxSizing: 'border-box',
                 pointerEvents: 'none',
                 transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
+                overflow: 'visible',
               }}
             >
-              <div style={{ color: '#fff', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.6)' }}>{zone.id}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                <div style={{ color: '#fff', fontSize: 12, textShadow: '0 1px 0 rgba(0,0,0,0.6)' }}>{controllingTeam ? `${Math.floor(score)}` : ''}</div>
-                <div style={{ width: 84, height: 10, background: 'rgba(0,0,0,0.45)', borderRadius: 6, padding: 2, boxSizing: 'border-box' }}>
-                  <div style={{ width: `${ratio * 100}%`, height: '100%', background: `linear-gradient(90deg, ${color}, ${color})`, borderRadius: 4, boxShadow: `0 0 8px ${color}66` }} />
-                </div>
-              </div>
+              <div style={{ color: '#ffffff', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.6)' }}>{zone.id}</div>
+              <div style={{ color: '#fff', fontSize: 12, textShadow: '0 1px 0 rgba(0, 0, 0, 0.6)' }}>{controllingTeam ? `${Math.floor(score)}` : ''}</div>
+              
+              {/* Bottom side progression (right to left) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  right: '0',
+                  bottom: '-6px',
+                  width: `${bottomFilled}px`,
+                  height: '6px',
+                  background: progressionColor,
+                  boxShadow: `0 0 16px ${progressionColor}, 0 0 24px ${progressionColor}66, inset 0 0 12px ${progressionColor}`,
+                  transition: 'width 100ms ease',
+                  pointerEvents: 'none',
+                }}
+              />
+              
+              {/* Left side progression (bottom to top) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '-6px',
+                  bottom: '0',
+                  width: '6px',
+                  height: `${leftFilled}px`,
+                  background: progressionColor,
+                  boxShadow: `0 0 16px ${progressionColor}, 0 0 24px ${progressionColor}66, inset 0 0 12px ${progressionColor}`,
+                  transition: 'height 100ms ease',
+                  pointerEvents: 'none',
+                }}
+              />
+              
+              {/* Top side progression (left to right) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '0',
+                  top: '-6px',
+                  width: `${topFilled}px`,
+                  height: '6px',
+                  background: progressionColor,
+                  boxShadow: `0 0 16px ${progressionColor}, 0 0 24px ${progressionColor}66, inset 0 0 12px ${progressionColor}`,
+                  transition: 'width 100ms ease',
+                  pointerEvents: 'none',
+                }}
+              />
+              
+              {/* Right side progression (top to bottom) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  right: '-6px',
+                  top: '0',
+                  width: '6px',
+                  height: `${rightFilled}px`,
+                  background: progressionColor,
+                  boxShadow: `0 0 16px ${progressionColor}, 0 0 24px ${progressionColor}66, inset 0 0 12px ${progressionColor}`,
+                  transition: 'height 100ms ease',
+                  pointerEvents: 'none',
+                }}
+              />
             </div>
           )
         })}
