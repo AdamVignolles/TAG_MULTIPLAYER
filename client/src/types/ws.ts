@@ -94,6 +94,7 @@ export type StateMessage = {
   players: PlayerView[]
   areaState?: AreaStateView
   areaScores?: Record<AreaTeam, number>
+  areaTeamSelectionActive?: boolean
 }
 
 export type GameOverResult = {

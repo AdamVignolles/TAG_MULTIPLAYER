@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { LobbyMessage, ServerMessage } from '../types/ws'
+import type { LobbyMessage, ServerMessage, StateMessage } from '../types/ws'
 import { getRandomCharacter } from '../utils/colorHelper'
 import { disableControllerTextSelection, disableControllerZoom } from './disableTextSelection.js'
 import { ConnectionPage } from './ConnectionPage'
@@ -69,7 +69,7 @@ export function ControllerApp() {
   const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE' | 'TEAM_GREEN' | 'TEAM_BLUE'>('FREE')
   const [playerColor, setPlayerColor] = useState<string | null>(null)
   const [bombTimer, setBombTimer] = useState<number | null>(null)
-  const [gameState, setGameState] = useState<{ countdownMs?: number } | null>(null)
+  const [gameState, setGameState] = useState<StateMessage | null>(null)
   const [isEliminated, setIsEliminated] = useState(false)
 
   const [, setLog] = useState('')
@@ -82,6 +82,7 @@ export function ControllerApp() {
   const [isPortrait, setIsPortrait] = useState(window.matchMedia('(orientation: portrait)').matches)
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement))
   const [gameOver, setGameOver] = useState(false)
+  const [selectedTeam, setSelectedTeam] = useState<'green' | 'blue' | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const playerIdRef = useRef<string | null>(null)
@@ -454,6 +455,13 @@ export function ControllerApp() {
       return <PortraitWarningPage showFullscreenHint />
     }
 
+    const handleSelectTeam = (team: 'green' | 'blue') => {
+      setSelectedTeam(team)
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'set_area_team', team }))
+      }
+    }
+
     return (
       <WaitingLaunchPage
         name={name}
@@ -463,6 +471,10 @@ export function ControllerApp() {
         isFullscreen={isFullscreen}
         onRequestFullscreen={requestFullscreen}
         onChangePseudo={handleChangePseudo}
+        mode={lobby?.mode}
+        gameState={gameState}
+        selectedTeam={selectedTeam}
+        onSelectTeam={handleSelectTeam}
       />
     )
   }

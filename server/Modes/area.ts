@@ -436,37 +436,88 @@ export function initAreaMode(players: Map<string, Player>, tiles: Tile[], arenaW
     snapshot = emptySnapshot();
     snapshot.zones = createZones(tiles, arenaWidth, floorY);
 
-    const playerIds = shuffleArray([...players.keys()]);
-    const half = playerIds.length / 2;
-    const greenIds = shuffleArray(playerIds.slice(0, half));
-    const blueIds = shuffleArray(playerIds.slice(half));
+    const playerList = [...players.values()];
+    const totalPlayers = playerList.length;
+    const targetTeamSize = Math.ceil(totalPlayers / 2);
 
-    runtime.teamOrders.green = greenIds;
-    runtime.teamOrders.blue = blueIds;
+    // Separate players by preference
+    const wantGreen = playerList.filter(p => p.wantedTeam === "green");
+    const wantBlue = playerList.filter(p => p.wantedTeam === "blue");
+    const noPreference = playerList.filter(p => !p.wantedTeam);
+
+    // Start with preferred assignments
+    const greenIds: string[] = [];
+    const blueIds: string[] = [];
+
+    // Add players who want green (up to team size limit)
+    for (const player of wantGreen) {
+        if (greenIds.length < targetTeamSize) {
+            greenIds.push(player.id);
+        }
+    }
+
+    // Add players who want blue (up to team size limit)
+    for (const player of wantBlue) {
+        if (blueIds.length < targetTeamSize) {
+            blueIds.push(player.id);
+        }
+    }
+
+    // Handle overflow: players who wanted a team but it's full go to no preference pool
+    const rejectedPlayers = [
+        ...wantGreen.filter(p => !greenIds.includes(p.id)),
+        ...wantBlue.filter(p => !blueIds.includes(p.id)),
+        ...noPreference
+    ];
+
+    // Shuffle rejected players for fair distribution
+    const shuffled = shuffleArray(rejectedPlayers);
+
+    // Fill teams with remaining players
+    for (const player of shuffled) {
+        if (greenIds.length < targetTeamSize) {
+            greenIds.push(player.id);
+        } else {
+            blueIds.push(player.id);
+        }
+    }
+
+    // Shuffle each team's order
+    const finalGreenIds = shuffleArray(greenIds);
+    const finalBlueIds = shuffleArray(blueIds);
+
+    runtime.teamOrders.green = finalGreenIds;
+    runtime.teamOrders.blue = finalBlueIds;
 
     const now = Date.now();
     snapshot.teams.green = {
         team: "green",
-        members: [...greenIds],
+        members: [...finalGreenIds],
         tagPlayerId: null,
         score: 0,
         buffs: emptyTeamBuffs(),
     };
     snapshot.teams.blue = {
         team: "blue",
-        members: [...blueIds],
+        members: [...finalBlueIds],
         tagPlayerId: null,
         score: 0,
         buffs: emptyTeamBuffs(),
     };
 
     runtime.playerTeams.clear();
-    [...players.values()].forEach((player, index) => {
-        const team = index < half ? "green" : "blue";
-        runtime.playerTeams.set(player.id, team);
-        player.areaTeam = team;
+    for (const playerId of finalGreenIds) {
+        runtime.playerTeams.set(playerId, "green");
+        const player = players.get(playerId)!;
+        player.areaTeam = "green";
         player.areaTag = false;
-    });
+    }
+    for (const playerId of finalBlueIds) {
+        runtime.playerTeams.set(playerId, "blue");
+        const player = players.get(playerId)!;
+        player.areaTeam = "blue";
+        player.areaTag = false;
+    }
 
     snapshot.nextFlagSpawnAt = now + FLAG_DURATION_MS;
     snapshot.nextTagRotationAt = 0;

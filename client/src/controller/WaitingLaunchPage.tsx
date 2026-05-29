@@ -1,3 +1,4 @@
+import type { StateMessage } from '../types/ws'
 import { getReadableBackground, getReadableColor, getFrenchColor } from './colorUtils'
 import { isIPhone } from './deviceDetection'
 
@@ -9,6 +10,10 @@ type WaitingLaunchPageProps = {
   isFullscreen: boolean
   onRequestFullscreen: () => void
   onChangePseudo: () => void
+  mode?: string
+  gameState?: StateMessage | null
+  selectedTeam?: 'green' | 'blue' | null
+  onSelectTeam?: (team: 'green' | 'blue') => void
 }
 
 export function WaitingLaunchPage({
@@ -19,8 +24,22 @@ export function WaitingLaunchPage({
   isFullscreen,
   onRequestFullscreen,
   onChangePseudo,
+  mode,
+  gameState,
+  selectedTeam,
+  onSelectTeam,
 }: WaitingLaunchPageProps) {
   const isPhone = isIPhone()
+  const isAreaMode = mode === 'area' && gameState?.areaTeamSelectionActive === true
+
+  // Count players in each team
+  const greenCount = gameState ? gameState.players.filter(p => p.areaTeam === 'green').length : 0
+  const blueCount = gameState ? gameState.players.filter(p => p.areaTeam === 'blue').length : 0
+  const totalPlayers = gameState ? gameState.players.length : 0
+  const maxTeamSize = Math.ceil(totalPlayers / 2)
+
+  const isGreenFull = greenCount >= maxTeamSize && greenCount > 0
+  const isBlueFull = blueCount >= maxTeamSize && blueCount > 0
 
   return (
     <main className="controller-layout waiting controller-force-landscape" style={isFullscreen ? { minHeight: '100vh' } : {}}>
@@ -49,6 +68,30 @@ export function WaitingLaunchPage({
         >
           <i className="fa-solid fa-pen"></i>
         </button>
+        {isAreaMode && onSelectTeam && (
+          <>
+            <button
+              className={`team-button team-green ${selectedTeam === 'green' ? 'selected' : ''} ${isGreenFull ? 'disabled' : ''}`}
+              onClick={() => !isGreenFull && onSelectTeam('green')}
+              aria-label="Choisir équipe verte"
+              title={isGreenFull ? 'Équipe verte pleine' : 'Choisir équipe verte'}
+              type="button"
+              disabled={isGreenFull}
+            >
+              <i className="fa-solid fa-users"></i> Vert {greenCount}/{maxTeamSize}
+            </button>
+            <button
+              className={`team-button team-blue ${selectedTeam === 'blue' ? 'selected' : ''} ${isBlueFull ? 'disabled' : ''}`}
+              onClick={() => !isBlueFull && onSelectTeam('blue')}
+              aria-label="Choisir équipe bleue"
+              title={isBlueFull ? 'Équipe bleue pleine' : 'Choisir équipe bleue'}
+              type="button"
+              disabled={isBlueFull}
+            >
+              <i className="fa-solid fa-users"></i> Bleu {blueCount}/{maxTeamSize}
+            </button>
+          </>
+        )}
       </h1>
       <p>Statut: {status}</p>
       <p>

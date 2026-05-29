@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView, GameOverResult } from '../types/ws'
 import { getSpriteUrl } from '../utils/characterManager'
 import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached, isAreaPlayerCountEven } from '../utils/rulesGameMode'
+import { AreaTeamSelectionPage } from './AreaTeamSelectionPage'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -391,6 +392,10 @@ export function ScreenApp() {
         <p>L'ecran principal fonctionne en format paysage.</p>
       </main>
     )
+  }
+
+  if (gameState?.areaTeamSelectionActive && lobby.mode === 'area') {
+    return <AreaTeamSelectionPage gameState={gameState} onStartGame={startGame} />
   }
 
   if (!lobby.started) {

@@ -64,6 +64,11 @@ type SetCharacterMessage = {
     character: CharacterType;
 };
 
+type SetAreaTeamMessage = {
+    type: "set_area_team";
+    team: AreaTeam;
+};
+
 type InputMessage = {
     type: "input";
     left: boolean;
@@ -72,7 +77,7 @@ type InputMessage = {
     down: boolean;
 };
 
-type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage | StopGameMessage | SetCharacterMessage;
+type ClientMessage = JoinMessage | InputMessage | SetModeMessage | StartGameMessage | StopGameMessage | SetCharacterMessage | SetAreaTeamMessage;
 
 export type Player = {
     id: string;
@@ -99,6 +104,7 @@ export type Player = {
     transformedFrom: string | null;
     // Area mode properties
     areaTeam: AreaTeam | null;
+    wantedTeam: AreaTeam | null;
     areaTag: boolean;
     areaTagUntil: number;
     areaFrozenUntil: number;
@@ -268,6 +274,7 @@ let roundHasBegun = false;
 let gameStartCountdownEndTs = 0;
 let gameMode: GameMode = "classic";
 let gameStarted = false;
+let areaTeamSelectionActive = false;
 
 function send(ws: WebSocket, payload: unknown) {
     if (ws.readyState === WebSocket.OPEN) {
@@ -310,6 +317,34 @@ function broadcastLobby() {
     });
 }
 
+function broadcastState() {
+    const stateMsg: any = {
+        type: "state",
+        mode: gameMode,
+        arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
+        remainingMs: 0,
+        tagPlayerId: null,
+        players: [...players.values()].map((p) => ({
+            id: p.id,
+            name: p.name,
+            x: p.x,
+            y: p.y,
+            radius: PLAYER_RADIUS,
+            character: p.character,
+            areaTeam: areaTeamSelectionActive ? p.wantedTeam : p.areaTeam,
+            areaTag: p.areaTag,
+            areaFrozen: false,
+        })),
+    };
+    
+    if (gameMode === "area") {
+        stateMsg.areaState = getAreaState();
+        stateMsg.areaTeamSelectionActive = areaTeamSelectionActive;
+    }
+    
+    broadcast(stateMsg);
+}
+
 function spawnPlayer(id: string, name: string, sessionId: string): Player {
     const player: Player = {
         id,
@@ -334,6 +369,7 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
         transformationStartTime: null,
         transformedFrom: null,
         areaTeam: null,
+        wantedTeam: null,
         areaTag: false,
         areaTagUntil: 0,
         areaFrozenUntil: 0,
@@ -974,6 +1010,21 @@ wss.on("connection", (ws: WebSocket) => {
                 return;
             }
 
+            // Pour le mode area, activer d'abord la phase de sélection d'équipe
+            if (gameMode === "area" && !areaTeamSelectionActive) {
+                areaTeamSelectionActive = true;
+                // Broadcast an initial state to trigger team selection on controllers
+                broadcastState();
+                return;
+            }
+
+            // Si on est en sélection d'équipe area, on réinitialise le flag
+            if (gameMode === "area" && areaTeamSelectionActive) {
+                areaTeamSelectionActive = false;
+                // Initialiser le mode area avec les équipes choisies
+                initAreaMode(players, tiles, ARENA_WIDTH, FLOOR_Y);
+            }
+
             gameStarted = true;
             roundHasBegun = false;
             gameStartCountdownEndTs = Date.now() + GAME_START_COUNTDOWN_MS;
@@ -1056,6 +1107,7 @@ wss.on("connection", (ws: WebSocket) => {
             }
 
             gameStarted = false;
+            areaTeamSelectionActive = false;
             roundHasBegun = false;
             gameStartCountdownEndTs = 0;
             roundStartTs = Date.now();
@@ -1075,6 +1127,7 @@ wss.on("connection", (ws: WebSocket) => {
                 player.transformationStartTime = null;
                 player.transformedFrom = null;
                 player.areaTeam = null;
+                player.wantedTeam = null;
                 player.areaTag = false;
                 player.areaTagUntil = 0;
                 player.areaFrozenUntil = 0;
@@ -1095,6 +1148,17 @@ wss.on("connection", (ws: WebSocket) => {
             const player = players.get(meta.playerId);
             if (!player) return;
             player.character = msg.character;
+            return;
+        }
+
+        if (msg.type === "set_area_team") {
+            if (meta.role !== "controller" || !meta.playerId) {
+                return;
+            }
+            const player = players.get(meta.playerId);
+            if (!player) return;
+            player.wantedTeam = msg.team;
+            broadcastState();
             return;
         }
 
