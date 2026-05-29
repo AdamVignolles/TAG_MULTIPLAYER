@@ -97,23 +97,27 @@ export function ControllerApp() {
   useEffect(() => {
     const media = window.matchMedia('(orientation: portrait)')
 
-    const updateOrientation = (event: MediaQueryListEvent) => {
-      setIsPortrait(event.matches)
+    const updateOrientation = () => {
+      setIsPortrait(media.matches)
     }
 
     const updateFullscreen = () => {
       setIsFullscreen(Boolean(document.fullscreenElement))
     }
 
-    setIsPortrait(media.matches)
+    updateOrientation()
     updateFullscreen()
 
     media.addEventListener('change', updateOrientation)
+    window.addEventListener('resize', updateOrientation)
+    window.addEventListener('orientationchange', updateOrientation)
 
     document.addEventListener('fullscreenchange', updateFullscreen)
 
     return () => {
       media.removeEventListener('change', updateOrientation)
+      window.removeEventListener('resize', updateOrientation)
+      window.removeEventListener('orientationchange', updateOrientation)
       document.removeEventListener('fullscreenchange', updateFullscreen)
     }
   }, [])

@@ -26,3 +26,8 @@ npm run client
 ```bash
 npm run server
 ```
+
+## Run Client + Server
+```bash
+npm run dev
+```
