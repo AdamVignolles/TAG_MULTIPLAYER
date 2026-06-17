@@ -242,6 +242,7 @@ export function ControllerApp() {
                 vibrateGameStart()
                 prevTagStateRef.current = 'FREE'
                 prevEliminatedRef.current = false
+                setGameOver(false)
                 return
               }
 
@@ -299,6 +300,12 @@ export function ControllerApp() {
             setPlayerColor(null)
             setBombTimer(null)
             setGameState(null)
+            setGameOver(false)
+            activePointersRef.current.forEach((pointers) => pointers.clear())
+            setLeft(false)
+            setRight(false)
+            setJump(false)
+            setDown(false)
           }
 
           ws.send(JSON.stringify({
@@ -429,6 +436,12 @@ export function ControllerApp() {
     sentColorForPlayerIdRef.current = null
     setGameOver(false)
     setGameState(null)
+    // Clear active pointers and control states
+    activePointersRef.current.forEach((pointers) => pointers.clear())
+    setLeft(false)
+    setRight(false)
+    setJump(false)
+    setDown(false)
   }
 
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
