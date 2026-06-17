@@ -256,6 +256,12 @@ export function ControllerApp() {
                 setGameState(null)
                 prevTagStateRef.current = 'FREE'
                 prevEliminatedRef.current = false
+                // Clear active pointers to reset controller state
+                activePointersRef.current.forEach((pointers) => pointers.clear())
+                setLeft(false)
+                setRight(false)
+                setJump(false)
+                setDown(false)
                 // If this player is in the winner list, show waiting page
                 if (data.result.winnersList.some((winner) => winner.id === playerIdRef.current)) {
                   setGameOver(true)
@@ -271,6 +277,12 @@ export function ControllerApp() {
                   vibrateGameOver()
                   prevTagStateRef.current = 'FREE'
                   prevEliminatedRef.current = false
+                   // Clear active pointers to reset controller state
+                   activePointersRef.current.forEach((pointers) => pointers.clear())
+                   setLeft(false)
+                   setRight(false)
+                   setJump(false)
+                   setDown(false)
                   setGameOver(true)
                 }
               }
