@@ -10,6 +10,7 @@ type WaitingLaunchPageProps = {
   isFullscreen: boolean
   onRequestFullscreen: () => void
   onChangePseudo: () => void
+  onChangeColor?: () => void
   mode?: string
   gameState?: StateMessage | null
   selectedTeam?: 'green' | 'blue' | null
@@ -24,6 +25,7 @@ export function WaitingLaunchPage({
   isFullscreen,
   onRequestFullscreen,
   onChangePseudo,
+  onChangeColor,
   mode,
   gameState,
   selectedTeam,
@@ -97,16 +99,31 @@ export function WaitingLaunchPage({
       <p>
         ID joueur: <span className="player-label-text">{playerLabel}</span>
       </p>
-              {playerColor && <p><span style=
-              {{ color: getReadableColor(playerColor), 
-                padding: '4px 12px',
-                borderRadius: '15px',
-                border: '1.5px solid ' + getReadableColor(playerColor),
-                backgroundColor: getReadableBackground(playerColor),
-                fontSize: '16px',
-                fontWeight: 700,
-                letterSpacing: '0.04em'
-                }}>Perso {getFrenchColor(playerColor)}</span></p>}
+              {playerColor && (
+                <p>
+                  <button
+                    onClick={onChangeColor}
+                    style={{
+                      color: getReadableColor(playerColor),
+                      padding: '4px 12px',
+                      borderRadius: '15px',
+                      border: '1.5px solid ' + getReadableColor(playerColor),
+                      backgroundColor: getReadableBackground(playerColor),
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      cursor: 'pointer',
+                      background: getReadableBackground(playerColor),
+                      display: 'inline-block'
+                    }}
+                    type="button"
+                    aria-label={`Changer de couleur (actuellement ${getFrenchColor(playerColor)})`}
+                    title="Cliquer pour changer de couleur"
+                  >
+                    Perso {getFrenchColor(playerColor)}
+                  </button>
+                </p>
+              )}
     </main>
   )
 }

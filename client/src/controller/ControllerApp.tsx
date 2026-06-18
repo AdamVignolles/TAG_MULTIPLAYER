@@ -61,6 +61,15 @@ async function requestFullscreenIfPossible(): Promise<boolean> {
   return false
 }
 
+const colorCycle = ['blue', 'green', 'purple', 'red', 'yellow'] as const
+
+function getNextColor(currentColor: string | null): string {
+  if (!currentColor) return 'blue'
+  const currentIndex = colorCycle.indexOf(currentColor as typeof colorCycle[number])
+  if (currentIndex === -1) return 'blue'
+  return colorCycle[(currentIndex + 1) % colorCycle.length]
+}
+
 export function ControllerApp() {
   const [status, setStatus] = useState('Deconnecte')
   const [nameInput, setNameInput] = useState(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY) ?? '')
@@ -444,6 +453,14 @@ export function ControllerApp() {
     setDown(false)
   }
 
+  function handleChangeColor() {
+    const nextColor = getNextColor(playerColor)
+    setPlayerColor(nextColor)
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'set_character', character: nextColor }))
+    }
+  }
+
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
 
   if (!name) {
@@ -496,6 +513,7 @@ export function ControllerApp() {
         isFullscreen={isFullscreen}
         onRequestFullscreen={requestFullscreen}
         onChangePseudo={handleChangePseudo}
+        onChangeColor={handleChangeColor}
         mode={lobby?.mode}
         gameState={gameState}
         selectedTeam={selectedTeam}
