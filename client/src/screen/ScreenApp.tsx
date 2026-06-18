@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { GameMode, LobbyMessage, ServerMessage, StateMessage, PlayerView, GameOverResult } from '../types/ws'
 import { getSpriteUrl } from '../utils/characterManager'
 import { getModeRules, getFrenchMode, getModeDescription, getGameStats, isMinPlayersReached, isAreaPlayerCountEven } from '../utils/rulesGameMode'
+import { gameAudioManager } from '../utils/gameAudioManager'
 import { AreaTeamSelectionPage } from './AreaTeamSelectionPage'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
@@ -296,6 +297,9 @@ export function ScreenApp() {
     if (previousCountdownMs > 0 && countdownMs === 0) {
       setLaunchBurstUntil(Date.now() + 650)
 
+      // Lancer la musique de jeu
+      gameAudioManager.startGameMusic()
+
       try {
         const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
         if (AudioContextCtor) {
@@ -339,6 +343,13 @@ export function ScreenApp() {
       window.clearInterval(intervalId)
     }
   }, [])
+
+  // Arrêter la musique quand la partie se termine
+  useEffect(() => {
+    if (gameOverResult) {
+      gameAudioManager.stopGameMusic()
+    }
+  }, [gameOverResult])
 
   function sendMode(mode: GameMode) {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
@@ -645,16 +656,16 @@ export function ScreenApp() {
           {lobby.mode === 'area' && gameState?.areaScores && (
             <div className="hud-pill area-score-pill">
               <span className="hud-pill-label">Scores</span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 25, alignItems: 'center', justifyContent: 'center' }}>
                 {Object.entries(gameState.areaScores)
                   .sort((a, b) => b[1] - a[1])
                   .slice(0, 2)
                   .map(([id, score]) => {
                     const color = TEAM_COLORS[id as keyof typeof TEAM_COLORS] ?? '#fff'
                     return (
-                      <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6}}>
                         <div style={{ width: 12, height: 12, background: color, borderRadius: 3 }} />
-                        <strong style={{ fontSize: 12 }}>{Math.floor(score)}</strong>
+                        <strong>{Math.floor(score)}</strong>
                       </div>
                     )
                   })}

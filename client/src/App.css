@@ -530,12 +530,12 @@ button {
 .game-hud {
   display: flex;
   width: 100%;
-  max-width: 1060px;
+  max-width: 1500px;
   gap: 1rem;
   align-items: center;
   justify-content: space-between;
   background: rgba(255, 249, 219, 0.94);
-  border: 2px solid #9d7d5d;
+  border: 3px solid #9d7d5d;
   border-radius: 18px;
   padding: 0.95rem 1rem;
   box-shadow: 0 3px 0 #9d7d5d;
@@ -553,11 +553,12 @@ button {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #6e2f10;
+  font-size: 1.4rem;
 }
 
 .hud-subtitle {
   margin: 0.2rem 0 0;
-  font-size: 0.78rem;
+  font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: #9d5e30;
@@ -573,20 +574,25 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  padding: 0.45rem 0.65rem;
+  padding: 0.5rem 1.3rem;
   border-radius: 12px;
   border: 2px solid #d9983c;
   background: #fff7d4;
 }
 
 .hud-pill strong {
-  font-size: 0.96rem;
+  font-size: 1.3rem;
   color: #5f2d0b;
+  text-align: center;
 }
 
 .hud-pill-label {
-  font-size: 0.68rem;
+  font-size: 1rem;
   letter-spacing: 0.08em;
+  color : black;
+  text-align: center;
+  font-weight: bold;
+  text-decoration: underline #d9983c;
 }
 
 .home-button {
