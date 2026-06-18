@@ -8,6 +8,7 @@ import { PortraitWarningPage } from './PortraitWarningPage'
 import { WaitingLaunchPage } from './WaitingLaunchPage'
 import { GamepadPage } from './GamepadPage'
 import { vibrateGameStart, vibrateGameOver, vibrateBecameTag, vibrateBecameFree, vibrateEliminated, flushVibration } from './vibration'
+import { clearControllerSounds, flushControllerSounds, playBecameFreeSound, playBecameTagSound } from './controllerSounds'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3001`
 const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
@@ -134,7 +135,10 @@ export function ControllerApp() {
 
   // Flush queued vibrations on any user touch/pointer interaction
   useEffect(() => {
-    const handler = () => flushVibration()
+    const handler = () => {
+      flushVibration()
+      flushControllerSounds()
+    }
     document.addEventListener('pointerdown', handler)
     document.addEventListener('touchstart', handler)
     return () => {
@@ -205,6 +209,7 @@ export function ControllerApp() {
                 setPlayerId(data.playerId)
                 playerIdRef.current = data.playerId
                 setPlayerTagState('FREE')
+                clearControllerSounds()
                 return
               }
 
@@ -224,8 +229,13 @@ export function ControllerApp() {
                   newTagState = isTag ? 'TAG' : 'FREE'
                 }
                 if (prevTagStateRef.current !== newTagState) {
-                  if (newTagState === 'TAG') vibrateBecameTag()
-                  else if (newTagState === 'FREE') vibrateBecameFree()
+                  if (newTagState === 'TAG') {
+                    vibrateBecameTag()
+                    playBecameTagSound()
+                  } else if (newTagState === 'FREE') {
+                    vibrateBecameFree()
+                    playBecameFreeSound()
+                  }
                   prevTagStateRef.current = newTagState
                 }
                 setPlayerTagState(newTagState)
@@ -251,6 +261,7 @@ export function ControllerApp() {
                 vibrateGameStart()
                 prevTagStateRef.current = 'FREE'
                 prevEliminatedRef.current = false
+                clearControllerSounds()
                 setGameOver(false)
                 return
               }
@@ -266,6 +277,7 @@ export function ControllerApp() {
                 setGameState(null)
                 prevTagStateRef.current = 'FREE'
                 prevEliminatedRef.current = false
+                clearControllerSounds()
                 // Clear active pointers to reset controller state
                 activePointersRef.current.forEach((pointers) => pointers.clear())
                 setLeft(false)
@@ -287,6 +299,7 @@ export function ControllerApp() {
                   vibrateGameOver()
                   prevTagStateRef.current = 'FREE'
                   prevEliminatedRef.current = false
+                  clearControllerSounds()
                    // Clear active pointers to reset controller state
                    activePointersRef.current.forEach((pointers) => pointers.clear())
                    setLeft(false)
@@ -310,6 +323,7 @@ export function ControllerApp() {
             setBombTimer(null)
             setGameState(null)
             setGameOver(false)
+            clearControllerSounds()
             activePointersRef.current.forEach((pointers) => pointers.clear())
             setLeft(false)
             setRight(false)
@@ -344,6 +358,7 @@ export function ControllerApp() {
       }
       wsRef.current = null
       playerIdRef.current = null
+      clearControllerSounds()
     }
   }, [name])
 
