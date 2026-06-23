@@ -546,8 +546,6 @@ export function ControllerApp() {
         roomCodeInput={roomCodeInput}
         onRoomCodeInputChange={setRoomCodeInput}
         onSubmitRoomCode={submitRoomCode}
-        onShowRoomCode={() => setNeedsRoomCode(true)}
-        hasName={!!name}
       />
     )
   }

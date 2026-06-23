@@ -9,8 +9,6 @@ type ConnectionPageProps = {
   roomCodeInput?: string
   onRoomCodeInputChange?: (value: string) => void
   onSubmitRoomCode?: (event: FormEvent<HTMLFormElement>) => void
-  onShowRoomCode?: () => void
-  hasName?: boolean
 }
 
 export function ConnectionPage({
@@ -22,8 +20,6 @@ export function ConnectionPage({
   roomCodeInput,
   onRoomCodeInputChange,
   onSubmitRoomCode,
-  onShowRoomCode,
-  hasName,
 }: ConnectionPageProps) {
   if (showRoomCodeInput) {
     return (
@@ -61,7 +57,7 @@ export function ConnectionPage({
             maxLength={16}
           />
           <button type="submit">Rejoindre</button>
-        </form>
+        </form> 
       </section>
     </main>
   )
