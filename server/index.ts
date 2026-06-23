@@ -184,7 +184,7 @@ function getSpawnPointFromTile(tile: Tile) {
 
 const PORT = Number(process.env.PORT) || 3001;
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const CLIENT_DIST = join(__dirname, "..", "..", "client", "dist");
+const CLIENT_DIST = join(__dirname, "..", "client", "dist");
 
 const MIME_TYPES: Record<string, string> = {
     ".html": "text/html",
