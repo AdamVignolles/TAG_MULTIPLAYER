@@ -118,7 +118,9 @@ export function ScreenApp() {
     modeLabel: MODE_LABEL.classic,
     connectedPlayers: 0,
     started: false,
+    roomCode: undefined,
   })
+  const [roomCode, setRoomCode] = useState<string | null>(null)
   const [gameState, setGameState] = useState<StateMessage | null>(null)
   const [gameTiles, setGameTiles] = useState<import('../types/ws').TileView[]>([])
   const [gameArena, setGameArena] = useState<{ width: number; height: number; floorY: number } | null>(null)
@@ -146,6 +148,8 @@ export function ScreenApp() {
     // Sinon (Codespace, production, etc.), utiliser l'origin courant
     return `${window.location.origin}`
   }, [])
+
+  const controllerUrlWithCode = roomCode ? `${controllerUrl}/${roomCode}` : controllerUrl
 
   useEffect(() => {
     const media = window.matchMedia('(orientation: portrait)')
@@ -200,6 +204,12 @@ export function ScreenApp() {
           ws.onmessage = (event) => {
             try {
               const data = JSON.parse(event.data) as ServerMessage
+
+              if (data.type === 'joined' && data.role === 'screen' && data.roomCode) {
+                setRoomCode(data.roomCode)
+                try { sessionStorage.setItem('tag.screen.roomCode', data.roomCode) } catch {}
+                return
+              }
 
               if (data.type === 'state') {
                 setGameState(data)
@@ -267,7 +277,8 @@ export function ScreenApp() {
             wsRef.current = null
           }
 
-          ws.send(JSON.stringify({ type: 'join', role: 'screen' }))
+          const storedRoomCode = (() => { try { return sessionStorage.getItem('tag.screen.roomCode') } catch { return null } })()
+          ws.send(JSON.stringify({ type: 'join', role: 'screen', roomCode: storedRoomCode || undefined }))
           return
         } catch (error) {
           console.warn('WebSocket connect failed', url, error)
@@ -440,12 +451,13 @@ export function ScreenApp() {
             <img
               className="qr-code"
               src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
-                controllerUrl,
+                controllerUrlWithCode,
               )}`}
               alt="QR code pour rejoindre en tant que controleur"
             />
             <p className="qr-hint">Les joueurs rejoignent via ce QR code ou via l'url ci dessous.</p>
-            <p className="small-url">{controllerUrl}</p>
+            <p className="small-url">{controllerUrlWithCode}</p>
+            {roomCode && <p className="room-code-display">Code : <strong>{roomCode}</strong></p>}
 
             <div className="lobby-info-grid">
               <div>

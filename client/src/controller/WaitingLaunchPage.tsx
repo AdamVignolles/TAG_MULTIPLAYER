@@ -11,6 +11,7 @@ type WaitingLaunchPageProps = {
   onRequestFullscreen: () => void
   onChangePseudo: () => void
   onChangeColor?: () => void
+  onChangeRoomCode?: () => void
   mode?: string
   gameState?: StateMessage | null
   selectedTeam?: 'green' | 'blue' | null
@@ -26,6 +27,7 @@ export function WaitingLaunchPage({
   onRequestFullscreen,
   onChangePseudo,
   onChangeColor,
+  onChangeRoomCode,
   mode,
   gameState,
   selectedTeam,
@@ -121,6 +123,28 @@ export function WaitingLaunchPage({
                     title="Cliquer pour changer de couleur"
                   >
                     Perso {getFrenchColor(playerColor)}
+                  </button>
+                </p>
+              )}
+              {onChangeRoomCode && (
+                <p>
+                  <button
+                    onClick={onChangeRoomCode}
+                    style={{
+                      marginTop: '0.5rem',
+                      background: 'transparent',
+                      border: '1px solid #666',
+                      color: '#ccc',
+                      padding: '0.4rem 0.8rem',
+                      cursor: 'pointer',
+                      borderRadius: '0.5rem',
+                      fontSize: '14px',
+                    }}
+                    type="button"
+                    aria-label="Changer de partie"
+                    title="Changer de partie"
+                  >
+                    <i className="fa-solid fa-right-from-bracket"></i> Changer de partie
                   </button>
                 </p>
               )}

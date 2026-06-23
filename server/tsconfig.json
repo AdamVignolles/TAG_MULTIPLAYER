@@ -8,9 +8,9 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": false,
-    "declaration": false,
-    "rewriteRelativeImportExtensions": true
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "declaration": false
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules", "dist"]

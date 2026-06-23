@@ -82,6 +82,7 @@ export type LobbyMessage = {
   modeLabel: string
   connectedPlayers: number
   started: boolean
+  roomCode?: string
 }
 
 export type StateMessage = {
@@ -129,7 +130,7 @@ export type AuraTransferMessage = {
 
 export type ServerMessage =
   | { type: 'hello'; message: string }
-  | { type: 'joined'; role: Role; playerId?: string; name?: string }
+  | { type: 'joined'; role: Role; playerId?: string; name?: string; roomCode?: string }
   | { type: 'error'; message: string }
   | { type: 'tag_event'; from: string; to: string }
   | { type: 'game_over'; message: string }

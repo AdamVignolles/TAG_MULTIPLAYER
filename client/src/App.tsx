@@ -9,9 +9,8 @@ function App() {
   const initialRole = useMemo<Role>(() => {
     const path = window.location.pathname
 
-    if (path === '/' || path === '/controller') return 'controller'
     if (path === '/game' || path === '/home' || path === '/map') return 'screen'
-
+    // Any other path is a controller (could be / or /XXXX room code)
     return 'controller'
   }, [])
 

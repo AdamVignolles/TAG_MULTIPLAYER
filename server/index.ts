@@ -44,6 +44,7 @@ type JoinMessage = {
     role: Role;
     name?: string;
     sessionId?: string;
+    roomCode?: string;
 };
 
 type SetModeMessage = {
@@ -125,24 +126,11 @@ function overlapsOnY(py: number, tile: Tile): boolean {
     return py + PLAYER_RADIUS > tile.y && py - PLAYER_RADIUS < tile.y + tile.h;
 }
 
-function getTileUnderPlayer(player: Player): Tile | null {
-    for (const tile of tiles) {
-        if (!overlapsOnX(player.x, tile)) {
-            continue;
-        }
-        // Check if player feet are touching tile top (onGround condition)
-        const tileTop = tile.y;
-        if (Math.abs((player.y + PLAYER_RADIUS) - tileTop) < 2) {
-            return tile;
-        }
-    }
-    return null;
-}
-
 type ClientMeta = {
     role?: Role;
     playerId?: string;
     sessionId?: string;
+    roomCode?: string;
 };
 
 const TICK_MS = 33;
@@ -150,7 +138,6 @@ const PLAYER_RADIUS = 16;
 const AREA_FREEZE_MIN_MS = 2000;
 const AREA_FREEZE_MAX_MS = 7000;
 const AREA_RELEASE_GRACE_MS = 500;
-const tiles: Tile[] = createSimpleMap(PLAYER_RADIUS);
 const MAX_JUMPS = 2;
 const TAG_COOLDOWN_MS = 800;
 const MAX_CONNECTED_PLAYERS = 200;
@@ -188,31 +175,11 @@ function shuffleArray<T>(items: T[]): T[] {
     return shuffled;
 }
 
-function getSpawnTiles(): Tile[] {
-    const nonGroundTiles = tiles.filter((tile) => !tile.id.startsWith("g"));
-    const groundTiles = tiles.filter((tile) => tile.id.startsWith("g"));
-
-    return [...shuffleArray(nonGroundTiles), ...shuffleArray(groundTiles)];
-}
-
 function getSpawnPointFromTile(tile: Tile) {
     return {
         x: Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, tile.x + tile.w / 2)),
         y: tile.y - PLAYER_RADIUS,
     };
-}
-
-function spawnPlayerOnMapBlock(player: Player) {
-    const spawnTile = getSpawnTiles()[0];
-    if (!spawnTile) {
-        player.x = 120;
-        player.y = FLOOR_Y - PLAYER_RADIUS;
-        return;
-    }
-
-    const spawnPoint = getSpawnPointFromTile(spawnTile);
-    player.x = spawnPoint.x;
-    player.y = spawnPoint.y;
 }
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -261,91 +228,198 @@ const httpServer = createServer((req, res) => {
 
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 const clients = new Map<WebSocket, ClientMeta>();
-const players = new Map<string, Player>();
-const disconnectedPlayerTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-let playerCounter = 1;
-let tagPlayerId: string | null = null;
-let bombTagPlayerIds: Set<string> = new Set();
-let lastTagTs = 0;
-let roundStartTs = Date.now();
-let roundDurationMs = 180000;
-let roundHasBegun = false;
-let gameStartCountdownEndTs = 0;
-let gameMode: GameMode = "classic";
-let gameStarted = false;
-let areaTeamSelectionActive = false;
+// --- Multi-session support ---
+const ROOM_CODE_LENGTH = 4;
+const SESSION_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes without any connected client
 
-function send(ws: WebSocket, payload: unknown) {
+function generateRoomCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I/O to avoid confusion
+    let code = "";
+    for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+}
+
+function getUniqueRoomCode(): string {
+    let code = generateRoomCode();
+    while (sessions.has(code)) {
+        code = generateRoomCode();
+    }
+    return code;
+}
+
+type GameSession = {
+    roomCode: string;
+    players: Map<string, Player>;
+    disconnectedPlayerTimers: Map<string, ReturnType<typeof setTimeout>>;
+    playerCounter: number;
+    tagPlayerId: string | null;
+    bombTagPlayerIds: Set<string>;
+    lastTagTs: number;
+    roundStartTs: number;
+    roundDurationMs: number;
+    roundHasBegun: boolean;
+    gameStartCountdownEndTs: number;
+    gameMode: GameMode;
+    gameStarted: boolean;
+    areaTeamSelectionActive: boolean;
+    tiles: Tile[];
+    // Timeout for session cleanup
+    cleanupTimer: ReturnType<typeof setTimeout> | null;
+    lastActivityTs: number;
+};
+
+const sessions = new Map<string, GameSession>();
+
+function createSession(): GameSession {
+    const roomCode = getUniqueRoomCode();
+    const session: GameSession = {
+        roomCode,
+        players: new Map(),
+        disconnectedPlayerTimers: new Map(),
+        playerCounter: 1,
+        tagPlayerId: null,
+        bombTagPlayerIds: new Set(),
+        lastTagTs: 0,
+        roundStartTs: Date.now(),
+        roundDurationMs: 180000,
+        roundHasBegun: false,
+        gameStartCountdownEndTs: 0,
+        gameMode: "classic",
+        gameStarted: false,
+        areaTeamSelectionActive: false,
+        tiles: createSimpleMap(PLAYER_RADIUS),
+        cleanupTimer: null,
+        lastActivityTs: Date.now(),
+    };
+    sessions.set(roomCode, session);
+    return session;
+}
+
+function getClientsForSession(roomCode: string): WebSocket[] {
+    const result: WebSocket[] = [];
+    for (const [ws, meta] of clients.entries()) {
+        if (meta.roomCode === roomCode && ws.readyState === WebSocket.OPEN) {
+            result.push(ws);
+        }
+    }
+    return result;
+}
+
+function getConnectedCountForSession(roomCode: string): number {
+    let count = 0;
+    for (const [ws, meta] of clients.entries()) {
+        if (meta.roomCode === roomCode && ws.readyState === WebSocket.OPEN) {
+            count++;
+        }
+    }
+    return count;
+}
+
+function broadcastToSession(session: GameSession, payload: unknown) {
+    const json = JSON.stringify(payload);
+    for (const [ws, meta] of clients.entries()) {
+        if (meta.roomCode === session.roomCode && ws.readyState === WebSocket.OPEN) {
+            ws.send(json);
+        }
+    }
+}
+
+function scheduleSessionCleanup(session: GameSession) {
+    if (session.cleanupTimer) {
+        clearTimeout(session.cleanupTimer);
+    }
+    session.cleanupTimer = setTimeout(() => {
+        // Check if anyone is still connected
+        const count = getConnectedCountForSession(session.roomCode);
+        if (count === 0) {
+            // Clean up all disconnected player timers
+            for (const timer of session.disconnectedPlayerTimers.values()) {
+                clearTimeout(timer);
+            }
+            sessions.delete(session.roomCode);
+        } else {
+            // Someone reconnected, reschedule
+            session.cleanupTimer = null;
+        }
+    }, SESSION_TIMEOUT_MS);
+}
+
+function checkSessionActivity(session: GameSession) {
+    const count = getConnectedCountForSession(session.roomCode);
+    if (count === 0 && !session.cleanupTimer) {
+        scheduleSessionCleanup(session);
+    } else if (count > 0 && session.cleanupTimer) {
+        clearTimeout(session.cleanupTimer);
+        session.cleanupTimer = null;
+    }
+}
+
+// --- Per-session game helpers (adapted from globals) ---
+
+function sendSession(ws: WebSocket, payload: unknown) {
     if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(payload));
     }
 }
 
-function broadcast(payload: unknown) {
-    const json = JSON.stringify(payload);
-    wss.clients.forEach((client: WebSocket) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(json);
-        }
-    });
-}
-
-function getRemainingMs() {
-    if (!roundHasBegun) {
-        return roundDurationMs;
+function getRemainingMsForSession(session: GameSession) {
+    if (!session.roundHasBegun) {
+        return session.roundDurationMs;
     }
-
-    return Math.max(0, roundDurationMs - (Date.now() - roundStartTs));
+    return Math.max(0, session.roundDurationMs - (Date.now() - session.roundStartTs));
 }
 
-function getCountdownMs() {
-    if (!gameStarted || roundHasBegun || gameStartCountdownEndTs <= 0) {
+function getCountdownMsForSession(session: GameSession) {
+    if (!session.gameStarted || session.roundHasBegun || session.gameStartCountdownEndTs <= 0) {
         return 0;
     }
-
-    return Math.max(0, gameStartCountdownEndTs - Date.now());
+    return Math.max(0, session.gameStartCountdownEndTs - Date.now());
 }
 
-function broadcastLobby() {
-    broadcast({
+function broadcastLobbyForSession(session: GameSession) {
+    broadcastToSession(session, {
         type: "lobby",
-        mode: gameMode,
-        modeLabel: MODE_CONFIG[gameMode].label,
-        connectedPlayers: players.size,
-        started: gameStarted,
+        mode: session.gameMode,
+        modeLabel: MODE_CONFIG[session.gameMode].label,
+        connectedPlayers: session.players.size,
+        started: session.gameStarted,
+        roomCode: session.roomCode,
     });
 }
 
-function broadcastState() {
+function broadcastStateForSession(session: GameSession) {
+    const now = Date.now();
     const stateMsg: any = {
         type: "state",
-        mode: gameMode,
+        mode: session.gameMode,
         arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
         remainingMs: 0,
         tagPlayerId: null,
-        players: [...players.values()].map((p) => ({
+        players: [...session.players.values()].map((p) => ({
             id: p.id,
             name: p.name,
             x: p.x,
             y: p.y,
             radius: PLAYER_RADIUS,
             character: p.character,
-            areaTeam: areaTeamSelectionActive ? p.wantedTeam : p.areaTeam,
+            areaTeam: session.areaTeamSelectionActive ? p.wantedTeam : p.areaTeam,
             areaTag: p.areaTag,
             areaFrozen: false,
         })),
     };
-    
-    if (gameMode === "area") {
+
+    if (session.gameMode === "area") {
         stateMsg.areaState = getAreaState();
-        stateMsg.areaTeamSelectionActive = areaTeamSelectionActive;
+        stateMsg.areaTeamSelectionActive = session.areaTeamSelectionActive;
     }
-    
-    broadcast(stateMsg);
+
+    broadcastToSession(session, stateMsg);
 }
 
-function spawnPlayer(id: string, name: string, sessionId: string): Player {
+function spawnPlayerInSession(session: GameSession, id: string, name: string, sessionId: string): Player {
     const player: Player = {
         id,
         sessionId,
@@ -381,9 +455,71 @@ function spawnPlayer(id: string, name: string, sessionId: string): Player {
         isEliminated: false,
     };
 
-    spawnPlayerOnMapBlock(player);
+    const spawnTiles = getSpawnTilesForSession(session);
+    const spawnTile = spawnTiles[0];
+    if (spawnTile) {
+        const spawnPoint = getSpawnPointFromTile(spawnTile);
+        player.x = spawnPoint.x;
+        player.y = spawnPoint.y;
+    } else {
+        player.x = 120;
+        player.y = FLOOR_Y - PLAYER_RADIUS;
+    }
 
     return player;
+}
+
+function getSpawnTilesForSession(session: GameSession): Tile[] {
+    const nonGroundTiles = session.tiles.filter((tile) => !tile.id.startsWith("g"));
+    const groundTiles = session.tiles.filter((tile) => tile.id.startsWith("g"));
+    return [...shuffleArray(nonGroundTiles), ...shuffleArray(groundTiles)];
+}
+
+function removePlayerFromSession(session: GameSession, playerId: string) {
+    const timer = session.disconnectedPlayerTimers.get(playerId);
+    if (timer) {
+        clearTimeout(timer);
+        session.disconnectedPlayerTimers.delete(playerId);
+    }
+
+    if (!session.players.has(playerId)) {
+        return;
+    }
+
+    session.players.delete(playerId);
+
+    if (session.tagPlayerId === playerId) {
+        session.tagPlayerId = pickRandomPlayerIdInSession(session);
+        session.lastTagTs = Date.now();
+    }
+
+    if (session.players.size === 0) {
+        session.gameStarted = false;
+        session.roundStartTs = Date.now();
+        session.tagPlayerId = null;
+    }
+}
+
+function schedulePlayerRemovalInSession(session: GameSession, playerId: string) {
+    if (session.disconnectedPlayerTimers.has(playerId)) {
+        return;
+    }
+
+    const timer = setTimeout(() => {
+        session.disconnectedPlayerTimers.delete(playerId);
+        removePlayerFromSession(session, playerId);
+        broadcastLobbyForSession(session);
+    }, 15000);
+
+    session.disconnectedPlayerTimers.set(playerId, timer);
+}
+
+function pickRandomPlayerIdInSession(session: GameSession): string | null {
+    const ids = [...session.players.keys()];
+    if (ids.length === 0) {
+        return null;
+    }
+    return ids[Math.floor(Math.random() * ids.length)] ?? null;
 }
 
 function isAreaTagActive(player: Player, now: number): boolean {
@@ -401,8 +537,8 @@ function freezeAreaPlayer(player: Player, now: number): void {
     player.areaFrozenMinUntil = now + AREA_FREEZE_MIN_MS;
 }
 
-function handleAreaTagInteractions(now: number): void {
-    const activeTaggers = [...players.values()].filter((player) => isAreaTagActive(player, now));
+function handleAreaTagInteractionsForSession(session: GameSession, now: number): void {
+    const activeTaggers = [...session.players.values()].filter((player) => isAreaTagActive(player, now));
 
     if (activeTaggers.length === 0) {
         return;
@@ -410,7 +546,7 @@ function handleAreaTagInteractions(now: number): void {
 
     const touchRangeSq = (PLAYER_RADIUS * 2) ** 2;
 
-    for (const candidate of players.values()) {
+    for (const candidate of session.players.values()) {
         let touchedByTagger = false;
         let rescueTouch = false;
 
@@ -451,101 +587,53 @@ function handleAreaTagInteractions(now: number): void {
     }
 }
 
-function removePlayer(playerId: string) {
-    const timer = disconnectedPlayerTimers.get(playerId);
-    if (timer) {
-        clearTimeout(timer);
-        disconnectedPlayerTimers.delete(playerId);
-    }
-
-    if (!players.has(playerId)) {
+function resetRoundIfNeededForSession(session: GameSession) {
+    if (!session.gameStarted || !session.roundHasBegun) {
         return;
     }
 
-    players.delete(playerId);
-
-    if (tagPlayerId === playerId) {
-        tagPlayerId = pickRandomPlayerId();
-        lastTagTs = Date.now();
-    }
-
-    if (players.size === 0) {
-        gameStarted = false;
-        roundStartTs = Date.now();
-        tagPlayerId = null;
-    }
-}
-
-function schedulePlayerRemoval(playerId: string) {
-    if (disconnectedPlayerTimers.has(playerId)) {
-        return;
-    }
-
-    const timer = setTimeout(() => {
-        disconnectedPlayerTimers.delete(playerId);
-        removePlayer(playerId);
-        broadcastLobby();
-    }, 15000);
-
-    disconnectedPlayerTimers.set(playerId, timer);
-}
-
-function pickRandomPlayerId(): string | null {
-    const ids = [...players.keys()];
-    if (ids.length === 0) {
-        return null;
-    }
-    const randomIndex = Math.floor(Math.random() * ids.length);
-    return ids[randomIndex] ?? null;
-}
-
-function resetRoundIfNeeded() {
-    if (!gameStarted || !roundHasBegun) {
-        return;
-    }
-
-    if (getRemainingMs() > 0) {
+    if (getRemainingMsForSession(session) > 0) {
         return;
     }
 
     let gameOverResult: GameOverResult;
-    if (gameMode === "zombie") {
-        gameOverResult = handleZombieRoundEnd(players);
-    } else if (gameMode === "bomb") {
-        gameOverResult = handleBombRoundEnd(players);
-    } else if (gameMode === "area") {
-        gameOverResult = handleAreaRoundEnd(players);
+    if (session.gameMode === "zombie") {
+        gameOverResult = handleZombieRoundEnd(session.players);
+    } else if (session.gameMode === "bomb") {
+        gameOverResult = handleBombRoundEnd(session.players);
+    } else if (session.gameMode === "area") {
+        gameOverResult = handleAreaRoundEnd(session.players);
     } else {
-        gameOverResult = handleClassicRoundEnd(tagPlayerId, players);
+        gameOverResult = handleClassicRoundEnd(session.tagPlayerId, session.players);
     }
 
-    broadcast({
+    broadcastToSession(session, {
         type: "game_over_result",
         result: gameOverResult,
     });
-    gameStarted = false;
-    roundStartTs = Date.now();
+    session.gameStarted = false;
+    session.roundStartTs = Date.now();
 }
 
-function updateGame(dt: number) {
-    if (!gameStarted) {
+function updateGameForSession(session: GameSession, dt: number) {
+    if (!session.gameStarted) {
         return;
     }
 
     const now = Date.now();
-    const countdownMs = getCountdownMs();
-    if (!roundHasBegun) {
+    const countdownMs = getCountdownMsForSession(session);
+    if (!session.roundHasBegun) {
         if (countdownMs > 0) {
-            broadcast({
+            broadcastToSession(session, {
                 type: "state",
-                mode: gameMode,
+                mode: session.gameMode,
                 arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
-                remainingMs: roundDurationMs,
+                remainingMs: session.roundDurationMs,
                 countdownMs,
-                tagPlayerId,
-                areaState: gameMode === "area" ? getAreaState() : undefined,
-                areaScores: gameMode === "area" ? getAreaScores() : undefined,
-                players: [...players.values()].map((p) => ({
+                tagPlayerId: session.tagPlayerId,
+                areaState: session.gameMode === "area" ? getAreaState() : undefined,
+                areaScores: session.gameMode === "area" ? getAreaScores() : undefined,
+                players: [...session.players.values()].map((p) => ({
                     id: p.id,
                     name: p.name,
                     character: p.character,
@@ -555,65 +643,66 @@ function updateGame(dt: number) {
                     vy: p.vy,
                     onGround: p.onGround,
                     radius: PLAYER_RADIUS,
-                    isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
-                    areaTeam: gameMode === "area" ? p.areaTeam : undefined,
-                    areaTag: gameMode === "area" ? p.areaTag : undefined,
-                    areaFrozen: gameMode === "area" ? p.areaFrozenUntil > now : undefined,
-                    bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
-                    isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
+                    isTag: session.gameMode === "zombie" ? p.isTag : (session.gameMode === "bomb" ? p.isTag : undefined),
+                    areaTeam: session.gameMode === "area" ? p.areaTeam : undefined,
+                    areaTag: session.gameMode === "area" ? p.areaTag : undefined,
+                    areaFrozen: session.gameMode === "area" ? p.areaFrozenUntil > now : undefined,
+                    bombCounter: session.gameMode === "bomb" ? p.bombCounter : undefined,
+                    isEliminated: session.gameMode === "bomb" ? p.isEliminated : undefined,
                 })),
             });
             return;
         }
 
-        roundHasBegun = true;
-        roundStartTs = Date.now();
-        lastTagTs = Date.now();
+        session.roundHasBegun = true;
+        session.roundStartTs = Date.now();
+        session.lastTagTs = Date.now();
     }
 
-    if (gameMode === "area") {
-        updateAreaTagLifecycle(players, now);
+    if (session.gameMode === "area") {
+        updateAreaTagLifecycle(session.players, now);
     }
 
-    const mode = MODE_CONFIG[gameMode];
+    const mode = MODE_CONFIG[session.gameMode];
+    const sessionTiles = session.tiles;
 
-    players.forEach((player) => {
+    session.players.forEach((player) => {
         const prevY = player.y;
         const wasOnGround = player.onGround;
         let jumpedThisTick = false;
 
-        if (gameMode === "area" && player.areaFrozenUntil > now) {
+        if (session.gameMode === "area" && player.areaFrozenUntil > now) {
             player.vx = 0;
             player.vy = 0;
             return;
         }
 
         // In zombie mode, immobilize during transformation
-        if (gameMode === "zombie" && player.transformationStartTime) {
+        if (session.gameMode === "zombie" && player.transformationStartTime) {
             player.vx = 0;
             player.vy = 0;
         } else {
             const horizontal = Number(player.input.right) - Number(player.input.left);
             let speed = mode.baseSpeed;
-            if (gameMode === "zombie") {
+            if (session.gameMode === "zombie") {
                 speed = getZombieSpeed(player, mode.baseSpeed, mode.tagSpeedBonus);
-            } else if (gameMode === "classic") {
-                speed = getClassicSpeed(player, tagPlayerId, mode.baseSpeed, mode.tagSpeedBonus);
-            } else if (gameMode === "area") {
+            } else if (session.gameMode === "classic") {
+                speed = getClassicSpeed(player, session.tagPlayerId, mode.baseSpeed, mode.tagSpeedBonus);
+            } else if (session.gameMode === "area") {
                 speed = mode.baseSpeed * getAreaPlayerSpeedMultiplier(player.id);
             }
             player.vx = horizontal * speed;
 
             // Apply speed modifiers from tiles the player is currently standing on
             if (player.onGround) {
-                const currentTile = getTileUnderPlayer(player);
+                const currentTile = getTileUnderPlayerInSession(player, sessionTiles);
                 if (currentTile) {
                     applyTileEffects(player, currentTile, mode, 'ground');
                 }
             }
         }
 
-        if (!player.transformationStartTime || gameMode !== "zombie") {
+        if (!player.transformationStartTime || session.gameMode !== "zombie") {
             if (player.input.jump && !player.jumpLatch && player.jumpsLeft > 0) {
                 player.vy = -mode.jumpForce;
                 player.onGround = false;
@@ -636,7 +725,7 @@ function updateGame(dt: number) {
 
         // Resolve horizontal movement first to block side traversal on solid tiles.
         player.x += player.vx * dt;
-        for (const tile of tiles) {
+        for (const tile of sessionTiles) {
             if (tile.type === 'passable') {
                 continue;
             }
@@ -662,7 +751,7 @@ function updateGame(dt: number) {
         player.onGround = false;
         let landedTile: Tile | null = null;
 
-        for (const tile of tiles) {
+        for (const tile of sessionTiles) {
             const tileTop = tile.y;
             const tileBottom = tile.y + tile.h;
             const prevTop = prevY - PLAYER_RADIUS;
@@ -675,8 +764,6 @@ function updateGame(dt: number) {
             }
 
             if (tile.type === 'passable') {
-                // Pink tile: can always be crossed from below, can stand on top,
-                // and pressing down allows dropping through.
                 if (player.input.down) {
                     continue;
                 }
@@ -733,50 +820,50 @@ function updateGame(dt: number) {
         }
     });
 
-    if (gameMode === "area") {
-        handleAreaTagInteractions(now);
-    } else if (Date.now() - lastTagTs > TAG_COOLDOWN_MS) {
-        // Collect all taggers based on game mode
+    if (session.gameMode === "area") {
+        handleAreaTagInteractionsForSession(session, now);
+    } else if (Date.now() - session.lastTagTs > TAG_COOLDOWN_MS) {
         const taggers: Player[] = [];
-        
-        if (gameMode === "zombie") {
-            for (const player of players.values()) {
+
+        if (session.gameMode === "zombie") {
+            for (const player of session.players.values()) {
                 if (player.isTag) {
                     taggers.push(player);
                 }
             }
-        } else if (gameMode === "bomb") {
-            for (const tagId of bombTagPlayerIds) {
-                const tagPlayer = players.get(tagId);
+        } else if (session.gameMode === "bomb") {
+            for (const tagId of session.bombTagPlayerIds) {
+                const tagPlayer = session.players.get(tagId);
                 if (tagPlayer && !tagPlayer.isEliminated) {
                     taggers.push(tagPlayer);
                 }
             }
-        } else if (tagPlayerId) {
-            const tagger = players.get(tagPlayerId);
+        } else if (session.tagPlayerId) {
+            const tagger = session.players.get(session.tagPlayerId);
             if (tagger) {
                 taggers.push(tagger);
             }
         }
-        
-        // Process collisions for each tagger
+
+        const broadcastFn = (payload: unknown) => broadcastToSession(session, payload);
+
         tagOuterLoop: for (const tagger of taggers) {
-            for (const candidate of players.values()) {
+            for (const candidate of session.players.values()) {
                 if (candidate.id === tagger.id) continue;
                 const dx = candidate.x - tagger.x;
                 const dy = candidate.y - tagger.y;
                 const distSq = dx * dx + dy * dy;
                 if (distSq < (PLAYER_RADIUS * 2) ** 2) {
-                    if (gameMode === "zombie" && !candidate.isTag && !candidate.transformationStartTime) {
-                        handleZombieTag(tagger, candidate, broadcast);
-                    } else if (gameMode === "bomb" && tagger.isTag && !candidate.isTag && !candidate.isEliminated) {
-                        handleBombTransfer(tagger, candidate, bombTagPlayerIds, broadcast);
-                        lastTagTs = Date.now();
+                    if (session.gameMode === "zombie" && !candidate.isTag && !candidate.transformationStartTime) {
+                        handleZombieTag(tagger, candidate, broadcastFn);
+                    } else if (session.gameMode === "bomb" && tagger.isTag && !candidate.isTag && !candidate.isEliminated) {
+                        handleBombTransfer(tagger, candidate, session.bombTagPlayerIds, broadcastFn);
+                        session.lastTagTs = Date.now();
                         break tagOuterLoop;
-                    } else if (gameMode === "classic") {
-                        tagPlayerId = candidate.id;
-                        lastTagTs = Date.now();
-                        broadcast({
+                    } else if (session.gameMode === "classic") {
+                        session.tagPlayerId = candidate.id;
+                        session.lastTagTs = Date.now();
+                        broadcastToSession(session, {
                             type: "tag_event",
                             from: tagger.name,
                             to: candidate.name,
@@ -788,84 +875,84 @@ function updateGame(dt: number) {
         }
     }
 
-     // Zombie mode: handle transformation cleanup after delay
-    if (gameMode === "zombie") {
-        handleZombieTransformationCleanup(players);
-        
-        // Check if all players are tags - immediate game over
-        if (checkZombieAllTagsGameOver(players)) {
-            gameStarted = false;
-            const gameOverResult = handleZombieAllTagsGameOver(players);
-            broadcast({
+    // Zombie mode: handle transformation cleanup after delay
+    if (session.gameMode === "zombie") {
+        handleZombieTransformationCleanup(session.players);
+
+        if (checkZombieAllTagsGameOver(session.players)) {
+            session.gameStarted = false;
+            const gameOverResult = handleZombieAllTagsGameOver(session.players);
+            broadcastToSession(session, {
                 type: "game_over_result",
                 result: gameOverResult,
             });
         }
     }
 
-    // Bomb mode: handle bomb counters and eliminations
-        if (gameMode === "bomb") {
-            const bombGameOver = updateBombMode(dt, players, bombTagPlayerIds, broadcast);
-            if (bombGameOver) {
-                gameStarted = false;
-                broadcast({
-                    type: "game_over_result",
-                    result: bombGameOver,
-                });
-            }
+    // Bomb mode
+    if (session.gameMode === "bomb") {
+        const broadcastFn = (payload: unknown) => broadcastToSession(session, payload);
+        const bombGameOver = updateBombMode(dt, session.players, session.bombTagPlayerIds, broadcastFn);
+        if (bombGameOver) {
+            session.gameStarted = false;
+            broadcastToSession(session, {
+                type: "game_over_result",
+                result: bombGameOver,
+            });
         }
+    }
 
-        // Area mode: update zones, drapeaux and scoring
-        if (gameMode === "area") {
-            const areaGameOver = updateAreaMode(dt, players, broadcast);
-            if (areaGameOver) {
-                gameStarted = false;
-                broadcast({ type: "game_over_result", result: areaGameOver });
-            }
-            // Ensure any spawned flag snaps to a nearby map block (tile)
-            try {
-                const areaState = getAreaState();
-                if (areaState.flag) {
-                    const fx = areaState.flag.x;
-                    const fy = areaState.flag.y;
-                    let best: Tile | null = null;
-                    let bestDist = Infinity;
-                    for (const tile of tiles) {
-                        const cx = tile.x + tile.w / 2;
-                        const cy = tile.y - PLAYER_RADIUS; // place flag slightly above tile top
-                        const dx = fx - cx;
-                        const dy = fy - cy;
-                        const d = dx * dx + dy * dy;
-                        if (d < bestDist) {
-                            bestDist = d;
-                            best = tile;
-                        }
-                    }
-
-                    if (best) {
-                        const cx = Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, best.x + best.w / 2));
-                        const cy = best.y - PLAYER_RADIUS;
-                        moveAreaFlagTo(cx, cy);
-                        broadcast({ type: 'area_flag_snapped', flagId: areaState.flag.id, x: cx, y: cy });
+    // Area mode
+    if (session.gameMode === "area") {
+        const broadcastFn = (payload: unknown) => broadcastToSession(session, payload);
+        const areaGameOver = updateAreaMode(dt, session.players, broadcastFn);
+        if (areaGameOver) {
+            session.gameStarted = false;
+            broadcastToSession(session, { type: "game_over_result", result: areaGameOver });
+        }
+        try {
+            const areaState = getAreaState();
+            if (areaState.flag) {
+                const fx = areaState.flag.x;
+                const fy = areaState.flag.y;
+                let best: Tile | null = null;
+                let bestDist = Infinity;
+                for (const tile of sessionTiles) {
+                    const cx = tile.x + tile.w / 2;
+                    const cy = tile.y - PLAYER_RADIUS;
+                    const dx = fx - cx;
+                    const dy = fy - cy;
+                    const d = dx * dx + dy * dy;
+                    if (d < bestDist) {
+                        bestDist = d;
+                        best = tile;
                     }
                 }
-            } catch (err) {
-                // ignore snapping errors
+
+                if (best) {
+                    const cx = Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, best.x + best.w / 2));
+                    const cy = best.y - PLAYER_RADIUS;
+                    moveAreaFlagTo(cx, cy);
+                    broadcastToSession(session, { type: 'area_flag_snapped', flagId: areaState.flag.id, x: cx, y: cy });
+                }
             }
+        } catch (err) {
+            // ignore snapping errors
         }
+    }
 
-    resetRoundIfNeeded();
+    resetRoundIfNeededForSession(session);
 
-    broadcast({
+    broadcastToSession(session, {
         type: "state",
-        mode: gameMode,
+        mode: session.gameMode,
         arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
-        remainingMs: getRemainingMs(),
+        remainingMs: getRemainingMsForSession(session),
         countdownMs: 0,
-        tagPlayerId,
-        areaState: gameMode === "area" ? getAreaState() : undefined,
-        areaScores: gameMode === "area" ? getAreaScores() : undefined,
-            players: [...players.values()].map((p) => ({
+        tagPlayerId: session.tagPlayerId,
+        areaState: session.gameMode === "area" ? getAreaState() : undefined,
+        areaScores: session.gameMode === "area" ? getAreaScores() : undefined,
+        players: [...session.players.values()].map((p) => ({
             id: p.id,
             name: p.name,
             character: p.character,
@@ -875,22 +962,35 @@ function updateGame(dt: number) {
             vy: p.vy,
             onGround: p.onGround,
             radius: PLAYER_RADIUS,
-            isTag: gameMode === "zombie" ? p.isTag : (gameMode === "bomb" ? p.isTag : undefined),
-            areaTeam: gameMode === "area" ? p.areaTeam : undefined,
-            areaTag: gameMode === "area" ? p.areaTag : undefined,
-            areaFrozen: gameMode === "area" ? p.areaFrozenUntil > now : undefined,
-            bombCounter: gameMode === "bomb" ? p.bombCounter : undefined,
-            isEliminated: gameMode === "bomb" ? p.isEliminated : undefined,
-            })),
+            isTag: session.gameMode === "zombie" ? p.isTag : (session.gameMode === "bomb" ? p.isTag : undefined),
+            areaTeam: session.gameMode === "area" ? p.areaTeam : undefined,
+            areaTag: session.gameMode === "area" ? p.areaTag : undefined,
+            areaFrozen: session.gameMode === "area" ? p.areaFrozenUntil > now : undefined,
+            bombCounter: session.gameMode === "bomb" ? p.bombCounter : undefined,
+            isEliminated: session.gameMode === "bomb" ? p.isEliminated : undefined,
+        })),
     });
+}
+
+function getTileUnderPlayerInSession(player: Player, sessionTiles: Tile[]): Tile | null {
+    for (const tile of sessionTiles) {
+        if (!overlapsOnX(player.x, tile)) {
+            continue;
+        }
+        const tileTop = tile.y;
+        if (Math.abs((player.y + PLAYER_RADIUS) - tileTop) < 2) {
+            return tile;
+        }
+    }
+    return null;
 }
 
 wss.on("connection", (ws: WebSocket) => {
     clients.set(ws, {});
 
-    send(ws, {
+    sendSession(ws, {
         type: "hello",
-        message: "Connecté au serveur TAG minimal",
+        message: "Connecté au serveur TAG multisession",
     });
 
     ws.on("message", (raw: { toString(): string }) => {
@@ -899,7 +999,7 @@ wss.on("connection", (ws: WebSocket) => {
         try {
             msg = JSON.parse(raw.toString()) as ClientMessage;
         } catch {
-            send(ws, { type: "error", message: "Message JSON invalide" });
+            sendSession(ws, { type: "error", message: "Message JSON invalide" });
             return;
         }
 
@@ -910,21 +1010,52 @@ wss.on("connection", (ws: WebSocket) => {
             meta.role = msg.role;
             meta.sessionId = msg.sessionId;
 
+            if (msg.role === "screen") {
+                // Try to rejoin an existing session if roomCode provided and session still exists
+                const requestedCode = msg.roomCode?.trim().toUpperCase();
+                let session: GameSession;
+
+                if (requestedCode && sessions.has(requestedCode)) {
+                    session = sessions.get(requestedCode)!;
+                    // Cancel cleanup timer since screen reconnected
+                    if (session.cleanupTimer) {
+                        clearTimeout(session.cleanupTimer);
+                        session.cleanupTimer = null;
+                    }
+                } else {
+                    session = createSession();
+                }
+
+                meta.roomCode = session.roomCode;
+                sendSession(ws, { type: "joined", role: "screen", roomCode: session.roomCode });
+                broadcastLobbyForSession(session);
+                return;
+            }
+
             if (msg.role === "controller") {
+                const roomCode = msg.roomCode?.trim().toUpperCase();
+                if (!roomCode || !sessions.has(roomCode)) {
+                    sendSession(ws, { type: "error", message: "Code de session invalide" });
+                    return;
+                }
+
+                const session = sessions.get(roomCode)!;
+                meta.roomCode = roomCode;
+
                 const sessionId = msg.sessionId?.trim() || `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
                 const trimmedName = msg.name?.trim();
-                const existingPlayer = [...players.values()].find((player) => player.sessionId === sessionId);
+                const existingPlayer = [...session.players.values()].find((player) => player.sessionId === sessionId);
 
-                if (!existingPlayer && players.size >= MAX_CONNECTED_PLAYERS) {
-                    send(ws, { type: "error", message: `Le serveur est plein (${MAX_CONNECTED_PLAYERS} joueurs maximum)` });
+                if (!existingPlayer && session.players.size >= MAX_CONNECTED_PLAYERS) {
+                    sendSession(ws, { type: "error", message: `Le serveur est plein (${MAX_CONNECTED_PLAYERS} joueurs maximum)` });
                     return;
                 }
 
                 if (existingPlayer) {
-                    const timer = disconnectedPlayerTimers.get(existingPlayer.id);
+                    const timer = session.disconnectedPlayerTimers.get(existingPlayer.id);
                     if (timer) {
                         clearTimeout(timer);
-                        disconnectedPlayerTimers.delete(existingPlayer.id);
+                        session.disconnectedPlayerTimers.delete(existingPlayer.id);
                     }
 
                     if (trimmedName) {
@@ -933,41 +1064,50 @@ wss.on("connection", (ws: WebSocket) => {
 
                     meta.playerId = existingPlayer.id;
                 } else {
-                    const id = `P${playerCounter++}`;
+                    const id = `P${session.playerCounter++}`;
                     const name = trimmedName || id;
-                    const player = spawnPlayer(id, name, sessionId);
-                    
+                    const player = spawnPlayerInSession(session, id, name, sessionId);
+
                     // Initialize bomb mode properties for new players joining during a bomb game
-                    if (gameStarted && gameMode === "bomb") {
-                        const bombCounter = getBombCounterForPlayerCount(players.size + 1);
+                    if (session.gameStarted && session.gameMode === "bomb") {
+                        const bombCounter = getBombCounterForPlayerCount(session.players.size + 1);
                         player.bombCounter = bombCounter;
                         player.bombCounterPersonal = bombCounter;
                         player.bombCounterStartTime = 0;
                     }
-                    
-                    players.set(id, player);
+
+                    session.players.set(id, player);
                     meta.playerId = id;
 
-                    if (!tagPlayerId) {
-                        tagPlayerId = id;
-                        lastTagTs = Date.now();
+                    if (!session.tagPlayerId) {
+                        session.tagPlayerId = id;
+                        session.lastTagTs = Date.now();
                     }
                 }
 
-                send(ws, {
+                // Cancel cleanup timer since someone connected
+                if (session.cleanupTimer) {
+                    clearTimeout(session.cleanupTimer);
+                    session.cleanupTimer = null;
+                }
+
+                sendSession(ws, {
                     type: "joined",
                     role: "controller",
                     playerId: meta.playerId,
-                    name: meta.playerId ? players.get(meta.playerId)?.name : trimmedName,
+                    name: meta.playerId ? session.players.get(meta.playerId)?.name : trimmedName,
                 });
-            } else {
-                send(ws, { type: "joined", role: "screen" });
-            }
 
-            broadcastLobby();
+                broadcastLobbyForSession(session);
+                return;
+            }
 
             return;
         }
+
+        // All other messages require a roomCode
+        const session = meta.roomCode ? sessions.get(meta.roomCode) : undefined;
+        if (!session) return;
 
         if (msg.type === "set_mode") {
             if (meta.role !== "screen") {
@@ -975,12 +1115,12 @@ wss.on("connection", (ws: WebSocket) => {
             }
 
             if (!(msg.mode in MODE_CONFIG)) {
-                send(ws, { type: "error", message: "Mode invalide" });
+                sendSession(ws, { type: "error", message: "Mode invalide" });
                 return;
             }
 
-            gameMode = msg.mode;
-            broadcastLobby();
+            session.gameMode = msg.mode;
+            broadcastLobbyForSession(session);
             return;
         }
 
@@ -989,63 +1129,58 @@ wss.on("connection", (ws: WebSocket) => {
                 return;
             }
 
-            if (players.size > MAX_CONNECTED_PLAYERS) {
-                send(ws, { type: "error", message: `Maximum ${MAX_CONNECTED_PLAYERS} joueurs autorisés` });
+            if (session.players.size > MAX_CONNECTED_PLAYERS) {
+                sendSession(ws, { type: "error", message: `Maximum ${MAX_CONNECTED_PLAYERS} joueurs autorisés` });
                 return;
             }
 
-            if (players.size === 0) {
-                send(ws, { type: "error", message: "Aucun joueur connecté" });
+            if (session.players.size === 0) {
+                sendSession(ws, { type: "error", message: "Aucun joueur connecté" });
                 return;
             }
 
-            if (gameMode === "area" && players.size % 2 !== 0) {
-                send(ws, { type: "error", message: "Le mode Conquete d'equipe requiert un nombre pair de joueurs" });
+            if (session.gameMode === "area" && session.players.size % 2 !== 0) {
+                sendSession(ws, { type: "error", message: "Le mode Conquete d'equipe requiert un nombre pair de joueurs" });
                 return;
             }
 
-            const minPlayersRequired = MODE_CONFIG[gameMode].minPlayers;
-            if (players.size < minPlayersRequired) {
-                send(ws, { type: "error", message: `Minimum ${minPlayersRequired} joueurs requis pour ce mode (actuellement ${players.size})` });
+            const minPlayersRequired = MODE_CONFIG[session.gameMode].minPlayers;
+            if (session.players.size < minPlayersRequired) {
+                sendSession(ws, { type: "error", message: `Minimum ${minPlayersRequired} joueurs requis pour ce mode (actuellement ${session.players.size})` });
                 return;
             }
 
-            // Pour le mode area, activer d'abord la phase de sélection d'équipe
-            if (gameMode === "area" && !areaTeamSelectionActive) {
-                areaTeamSelectionActive = true;
-                // Broadcast an initial state to trigger team selection on controllers
-                broadcastState();
+            if (session.gameMode === "area" && !session.areaTeamSelectionActive) {
+                session.areaTeamSelectionActive = true;
+                broadcastStateForSession(session);
                 return;
             }
 
-            // Si on est en sélection d'équipe area, on réinitialise le flag
-            if (gameMode === "area" && areaTeamSelectionActive) {
-                areaTeamSelectionActive = false;
-                // Initialiser le mode area avec les équipes choisies
-                initAreaMode(players, tiles, ARENA_WIDTH, FLOOR_Y);
+            if (session.gameMode === "area" && session.areaTeamSelectionActive) {
+                session.areaTeamSelectionActive = false;
+                initAreaMode(session.players, session.tiles, ARENA_WIDTH, FLOOR_Y);
             }
 
-            gameStarted = true;
-            roundHasBegun = false;
-            gameStartCountdownEndTs = Date.now() + GAME_START_COUNTDOWN_MS;
-            roundStartTs = gameStartCountdownEndTs;
-            lastTagTs = Date.now();
+            session.gameStarted = true;
+            session.roundHasBegun = false;
+            session.gameStartCountdownEndTs = Date.now() + GAME_START_COUNTDOWN_MS;
+            session.roundStartTs = session.gameStartCountdownEndTs;
+            session.lastTagTs = Date.now();
 
-            // Calculate round duration based on mode
-            if (gameMode === "bomb") {
-                roundDurationMs = Number.POSITIVE_INFINITY;
+            if (session.gameMode === "bomb") {
+                session.roundDurationMs = Number.POSITIVE_INFINITY;
             } else {
-                const mode = MODE_CONFIG[gameMode];
-                roundDurationMs = mode.baseRoundDurationMs ?? roundDurationMs;
+                const modeConfig = MODE_CONFIG[session.gameMode];
+                session.roundDurationMs = modeConfig.baseRoundDurationMs ?? session.roundDurationMs;
             }
 
-            tagPlayerId = pickRandomPlayerId();
+            session.tagPlayerId = pickRandomPlayerIdInSession(session);
 
-            const spawnTiles = getSpawnTiles();
-            const playerIds = shuffleArray([...players.keys()]);
+            const spawnTiles = getSpawnTilesForSession(session);
+            const playerIds = shuffleArray([...session.players.keys()]);
 
             playerIds.forEach((playerId, index) => {
-                const player = players.get(playerId);
+                const player = session.players.get(playerId);
                 if (!player) {
                     return;
                 }
@@ -1068,36 +1203,31 @@ wss.on("connection", (ws: WebSocket) => {
                 player.transformationStartTime = null;
                 player.transformedFrom = null;
                 player.isEliminated = false;
-                
-                // Set initial tag for zombie mode
-                if (gameMode === "zombie" && player.id === tagPlayerId) {
+
+                if (session.gameMode === "zombie" && player.id === session.tagPlayerId) {
                     player.isTag = true;
                 }
             });
 
-            // Initialize bomb mode
-            // Initialize zombie mode
-            if (gameMode === "zombie") {
-                initZombieMode(players);
+            if (session.gameMode === "zombie") {
+                initZombieMode(session.players);
             }
 
-            // Initialize bomb mode
-            if (gameMode === "bomb") {
-                initBombMode(players, bombTagPlayerIds);
+            if (session.gameMode === "bomb") {
+                initBombMode(session.players, session.bombTagPlayerIds);
             }
 
-            // Initialize area mode
-            if (gameMode === "area") {
-                initAreaMode(players, tiles, ARENA_WIDTH, FLOOR_Y);
+            if (session.gameMode === "area") {
+                initAreaMode(session.players, session.tiles, ARENA_WIDTH, FLOOR_Y);
             }
 
-            broadcast({
+            broadcastToSession(session, {
                 type: "game_started",
-                mode: gameMode,
+                mode: session.gameMode,
                 arena: { width: ARENA_WIDTH, height: ARENA_HEIGHT, floorY: FLOOR_Y },
-                tiles: tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
+                tiles: session.tiles.map(t => ({ id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, type: t.type, className: t.className })),
             });
-            broadcastLobby();
+            broadcastLobbyForSession(session);
             return;
         }
 
@@ -1106,14 +1236,14 @@ wss.on("connection", (ws: WebSocket) => {
                 return;
             }
 
-            gameStarted = false;
-            areaTeamSelectionActive = false;
-            roundHasBegun = false;
-            gameStartCountdownEndTs = 0;
-            roundStartTs = Date.now();
-            tagPlayerId = null;
+            session.gameStarted = false;
+            session.areaTeamSelectionActive = false;
+            session.roundHasBegun = false;
+            session.gameStartCountdownEndTs = 0;
+            session.roundStartTs = Date.now();
+            session.tagPlayerId = null;
 
-            players.forEach((player) => {
+            session.players.forEach((player) => {
                 player.x = 120 + ((Math.random() * 600) | 0);
                 player.y = FLOOR_Y;
                 player.vx = 0;
@@ -1135,9 +1265,9 @@ wss.on("connection", (ws: WebSocket) => {
                 player.areaFrozenGraceUntil = 0;
             });
 
-            resetAreaMode(players);
+            resetAreaMode(session.players);
 
-            broadcastLobby();
+            broadcastLobbyForSession(session);
             return;
         }
 
@@ -1145,7 +1275,7 @@ wss.on("connection", (ws: WebSocket) => {
             if (meta.role !== "controller" || !meta.playerId) {
                 return;
             }
-            const player = players.get(meta.playerId);
+            const player = session.players.get(meta.playerId);
             if (!player) return;
             player.character = msg.character;
             return;
@@ -1155,10 +1285,10 @@ wss.on("connection", (ws: WebSocket) => {
             if (meta.role !== "controller" || !meta.playerId) {
                 return;
             }
-            const player = players.get(meta.playerId);
+            const player = session.players.get(meta.playerId);
             if (!player) return;
             player.wantedTeam = msg.team;
-            broadcastState();
+            broadcastStateForSession(session);
             return;
         }
 
@@ -1166,7 +1296,7 @@ wss.on("connection", (ws: WebSocket) => {
             if (meta.role !== "controller" || !meta.playerId) {
                 return;
             }
-            const player = players.get(meta.playerId);
+            const player = session.players.get(meta.playerId);
             if (!player) return;
             player.input.left = Boolean(msg.left);
             player.input.right = Boolean(msg.right);
@@ -1179,24 +1309,30 @@ wss.on("connection", (ws: WebSocket) => {
         const meta = clients.get(ws);
         clients.delete(ws);
 
-        if (meta?.playerId) {
-            const player = players.get(meta.playerId);
+        if (meta?.playerId && meta.roomCode) {
+            const session = sessions.get(meta.roomCode);
+            if (session) {
+                const player = session.players.get(meta.playerId);
 
-            if (player) {
-                player.input.left = false;
-                player.input.right = false;
-                player.input.jump = false;
-                player.input.down = false;
-                schedulePlayerRemoval(meta.playerId);
+                if (player) {
+                    player.input.left = false;
+                    player.input.right = false;
+                    player.input.jump = false;
+                    player.input.down = false;
+                    schedulePlayerRemovalInSession(session, meta.playerId);
+                }
+
+                broadcastLobbyForSession(session);
+                checkSessionActivity(session);
             }
         }
-
-        broadcastLobby();
     });
 });
 
 setInterval(() => {
-    updateGame(TICK_MS / 1000);
+    for (const session of sessions.values()) {
+        updateGameForSession(session, TICK_MS / 1000);
+    }
 }, TICK_MS);
 
 httpServer.listen(PORT, () => {

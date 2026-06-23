@@ -16,6 +16,13 @@ const WS_RELATIVE = `${window.location.origin.replace(/^http/, 'ws')}/ws`
 const CONTROLLER_NAME_STORAGE_KEY = 'tag.controller.name'
 const CONTROLLER_SESSION_STORAGE_KEY = 'tag.controller.sessionId'
 
+function getRoomCodeFromUrl(): string | null {
+  const path = window.location.pathname
+  // Match /XXXX (4 letters) at the end of the path
+  const match = path.match(/\/([A-Za-z]{4})$/)
+  return match ? match[1].toUpperCase() : null
+}
+
 function readStoredValue(key: string) {
   try {
     return window.localStorage.getItem(key)
@@ -75,6 +82,9 @@ export function ControllerApp() {
   const [status, setStatus] = useState('Deconnecte')
   const [nameInput, setNameInput] = useState(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY) ?? '')
   const [name, setName] = useState<string | null>(() => readStoredValue(CONTROLLER_NAME_STORAGE_KEY)?.trim() || null)
+  const [roomCode, setRoomCode] = useState<string | null>(() => getRoomCodeFromUrl())
+  const [roomCodeInput, setRoomCodeInput] = useState('')
+  const [needsRoomCode, setNeedsRoomCode] = useState(!getRoomCodeFromUrl())
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [playerTagState, setPlayerTagState] = useState<'TAG' | 'FREE' | 'TEAM_GREEN' | 'TEAM_BLUE'>('FREE')
   const [playerColor, setPlayerColor] = useState<string | null>(null)
@@ -169,6 +179,7 @@ export function ControllerApp() {
 
   useEffect(() => {
     if (!name) return
+    if (!roomCode) return
 
     let closed = false
     const candidates = [WS_RELATIVE, WS_URL, 'ws://localhost:3001']
@@ -293,6 +304,13 @@ export function ControllerApp() {
 
               if (data.type === 'game_over' || data.type === 'error') {
                 setLog(data.message)
+                if (data.type === 'error' && data.message.includes('session invalide')) {
+                  // Invalid room code - show room code input
+                  setRoomCode(null)
+                  setNeedsRoomCode(true)
+                  setRoomCodeInput('')
+                  return
+                }
                 setBombTimer(null)
                 setGameState(null)
                 if (data.type === 'game_over') {
@@ -336,6 +354,7 @@ export function ControllerApp() {
             role: 'controller',
             name,
             sessionId: controllerSessionIdRef.current,
+            roomCode,
           }))
           return
         } catch (error) {
@@ -360,7 +379,7 @@ export function ControllerApp() {
       playerIdRef.current = null
       clearControllerSounds()
     }
-  }, [name])
+  }, [name, roomCode])
 
   // Refs pour tracker les pointers actifs sur chaque bouton
   const activePointersRef = useRef<Map<string, Set<number>>>(new Map([
@@ -440,6 +459,10 @@ export function ControllerApp() {
     writeStoredValue(CONTROLLER_NAME_STORAGE_KEY, trimmed)
     writeStoredValue(CONTROLLER_SESSION_STORAGE_KEY, controllerSessionIdRef.current)
     setName(trimmed)
+    // If no room code, keep needsRoomCode true so the room code input appears
+    if (roomCode) {
+      setNeedsRoomCode(false)
+    }
   }
 
   function requestFullscreen() {
@@ -468,6 +491,40 @@ export function ControllerApp() {
     setDown(false)
   }
 
+  function handleChangeRoomCode() {
+    setRoomCode(null)
+    setNeedsRoomCode(true)
+    setRoomCodeInput('')
+    setLobby(null)
+    setStatus('Deconnecte')
+    setPlayerId(null)
+    playerIdRef.current = null
+    setPlayerTagState('FREE')
+    setPlayerColor(null)
+    sentColorForPlayerIdRef.current = null
+    setGameOver(false)
+    setGameState(null)
+    activePointersRef.current.forEach((pointers) => pointers.clear())
+    setLeft(false)
+    setRight(false)
+    setJump(false)
+    setDown(false)
+    try {
+      wsRef.current?.close()
+    } catch {
+      // no-op
+    }
+    wsRef.current = null
+  }
+
+  function submitRoomCode(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const trimmed = roomCodeInput.trim().toUpperCase()
+    if (trimmed.length !== 4) return
+    setRoomCode(trimmed)
+    setNeedsRoomCode(false)
+  }
+
   function handleChangeColor() {
     const nextColor = getNextColor(playerColor)
     setPlayerColor(nextColor)
@@ -478,13 +535,19 @@ export function ControllerApp() {
 
   const playerLabel = (name ?? '').slice(0, 2).toUpperCase() || playerId || '--'
 
-  if (!name) {
+  if (!name || needsRoomCode) {
     return (
       <ConnectionPage
         isPortrait={isPortrait}
         nameInput={nameInput}
         onNameInputChange={setNameInput}
         onSubmitName={submitName}
+        showRoomCodeInput={needsRoomCode && !!name}
+        roomCodeInput={roomCodeInput}
+        onRoomCodeInputChange={setRoomCodeInput}
+        onSubmitRoomCode={submitRoomCode}
+        onShowRoomCode={() => setNeedsRoomCode(true)}
+        hasName={!!name}
       />
     )
   }
@@ -529,6 +592,7 @@ export function ControllerApp() {
         onRequestFullscreen={requestFullscreen}
         onChangePseudo={handleChangePseudo}
         onChangeColor={handleChangeColor}
+        onChangeRoomCode={handleChangeRoomCode}
         mode={lobby?.mode}
         gameState={gameState}
         selectedTeam={selectedTeam}

@@ -5,6 +5,12 @@ type ConnectionPageProps = {
   nameInput: string
   onNameInputChange: (value: string) => void
   onSubmitName: (event: FormEvent<HTMLFormElement>) => void
+  showRoomCodeInput?: boolean
+  roomCodeInput?: string
+  onRoomCodeInputChange?: (value: string) => void
+  onSubmitRoomCode?: (event: FormEvent<HTMLFormElement>) => void
+  onShowRoomCode?: () => void
+  hasName?: boolean
 }
 
 export function ConnectionPage({
@@ -12,7 +18,35 @@ export function ConnectionPage({
   nameInput,
   onNameInputChange,
   onSubmitName,
+  showRoomCodeInput,
+  roomCodeInput,
+  onRoomCodeInputChange,
+  onSubmitRoomCode,
+  onShowRoomCode,
+  hasName,
 }: ConnectionPageProps) {
+  if (showRoomCodeInput) {
+    return (
+      <main className={`controller-name-layout ${isPortrait ? 'controller-name-portrait' : ''} turnPhone`}>
+        <section className={`controller-name-card ${isPortrait ? 'controller-name-portrait' : ''}`}>
+          <h1>Code de la partie</h1>
+          <p>Entrez le code affiché sur l'écran de jeu.</p>
+          <form onSubmit={onSubmitRoomCode}>
+            <input
+              className="name-input room-code-input"
+              value={roomCodeInput ?? ''}
+              onChange={(e) => onRoomCodeInputChange?.(e.target.value.toUpperCase())}
+              placeholder="ABCD"
+              maxLength={4}
+              style={{ textTransform: 'uppercase', letterSpacing: '0.3em', textAlign: 'center', fontSize: '1.5rem' }}
+            />
+            <button type="submit">Rejoindre</button>
+          </form>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className={`controller-name-layout ${isPortrait ? 'controller-name-portrait' : ''} turnPhone`}>
       <section className={`controller-name-card ${isPortrait ? 'controller-name-portrait' : ''}`}>
@@ -28,6 +62,16 @@ export function ConnectionPage({
           />
           <button type="submit">Rejoindre</button>
         </form>
+        {!hasName && onShowRoomCode && (
+          <button
+            type="button"
+            className="room-code-button"
+            onClick={onShowRoomCode}
+            style={{ marginTop: '1rem', background: 'transparent', border: '1px solid #666', color: '#ccc', padding: '0.5rem 1rem', cursor: 'pointer', borderRadius: '0.5rem' }}
+          >
+            Entrer un code de partie
+          </button>
+        )}
       </section>
     </main>
   )
