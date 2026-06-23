@@ -49,7 +49,6 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
   padding: 1rem;
   min-height: 100vh;
 }
@@ -450,6 +449,23 @@ button {
 
 .controller-layout.gamepad.controls-locked .player-tag-state {
   opacity: 0.85;
+}
+
+.title-row {
+  position: relative;
+  width: 100%;
+}
+
+.title-row h1 {
+  margin: 0;
+  text-align: center;
+}
+
+.title-fullscreen-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 @keyframes controller-lock-bounce {

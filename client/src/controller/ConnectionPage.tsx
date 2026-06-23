@@ -62,16 +62,6 @@ export function ConnectionPage({
           />
           <button type="submit">Rejoindre</button>
         </form>
-        {!hasName && onShowRoomCode && (
-          <button
-            type="button"
-            className="room-code-button"
-            onClick={onShowRoomCode}
-            style={{ marginTop: '1rem', background: 'transparent', border: '1px solid #666', color: '#ccc', padding: '0.5rem 1rem', cursor: 'pointer', borderRadius: '0.5rem' }}
-          >
-            Entrer un code de partie
-          </button>
-        )}
       </section>
     </main>
   )

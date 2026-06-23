@@ -47,56 +47,58 @@ export function WaitingLaunchPage({
 
   return (
     <main className="controller-layout waiting controller-force-landscape" style={isFullscreen ? { minHeight: '100vh' } : {}}>
-      {!isFullscreen && !isPhone && (
-        <>         
+      <div className="title-row">
+        <h1>
+          {name}
           <button
-            className="fullscreen-button"
+            className="change-pseudo-button"
+            onClick={onChangePseudo}
+            aria-label="Changer le nom"
+            title="Changer le nom"
+            type="button"
+          >
+            <i className="fa-solid fa-pen"></i>
+          </button>
+
+          {isAreaMode && onSelectTeam && (
+            <>
+              <button
+                className={`team-button team-green ${selectedTeam === 'green' ? 'selected' : ''} ${isGreenFull ? 'disabled' : ''}`}
+                onClick={() => !isGreenFull && onSelectTeam('green')}
+                aria-label="Choisir équipe verte"
+                title={isGreenFull ? 'Équipe verte pleine' : 'Choisir équipe verte'}
+                type="button"
+                disabled={isGreenFull}
+              >
+                <i className="fa-solid fa-users"></i> Vert {greenCount}/{maxTeamSize}
+              </button>
+
+              <button
+                className={`team-button team-blue ${selectedTeam === 'blue' ? 'selected' : ''} ${isBlueFull ? 'disabled' : ''}`}
+                onClick={() => !isBlueFull && onSelectTeam('blue')}
+                aria-label="Choisir équipe bleue"
+                title={isBlueFull ? 'Équipe bleue pleine' : 'Choisir équipe bleue'}
+                type="button"
+                disabled={isBlueFull}
+              >
+                <i className="fa-solid fa-users"></i> Bleu {blueCount}/{maxTeamSize}
+              </button>
+            </>
+          )}
+        </h1>
+
+        {!isFullscreen && !isPhone && (
+          <button
+            className="fullscreen-button title-fullscreen-button"
             onClick={onRequestFullscreen}
             aria-label="Passer en plein écran"
             title="Passer en plein écran"
             type="button"
           >
-          <i className="fa-solid fa-expand"></i>
+            <i className="fa-solid fa-expand"></i>
           </button>
-        </>
-      )}
-
-      <h1>
-        {name}
-        <button
-          className="change-pseudo-button"
-          onClick={onChangePseudo}
-          aria-label="Changer le nom"
-          title="Changer le nom"
-          type="button"
-        >
-          <i className="fa-solid fa-pen"></i>
-        </button>
-        {isAreaMode && onSelectTeam && (
-          <>
-            <button
-              className={`team-button team-green ${selectedTeam === 'green' ? 'selected' : ''} ${isGreenFull ? 'disabled' : ''}`}
-              onClick={() => !isGreenFull && onSelectTeam('green')}
-              aria-label="Choisir équipe verte"
-              title={isGreenFull ? 'Équipe verte pleine' : 'Choisir équipe verte'}
-              type="button"
-              disabled={isGreenFull}
-            >
-              <i className="fa-solid fa-users"></i> Vert {greenCount}/{maxTeamSize}
-            </button>
-            <button
-              className={`team-button team-blue ${selectedTeam === 'blue' ? 'selected' : ''} ${isBlueFull ? 'disabled' : ''}`}
-              onClick={() => !isBlueFull && onSelectTeam('blue')}
-              aria-label="Choisir équipe bleue"
-              title={isBlueFull ? 'Équipe bleue pleine' : 'Choisir équipe bleue'}
-              type="button"
-              disabled={isBlueFull}
-            >
-              <i className="fa-solid fa-users"></i> Bleu {blueCount}/{maxTeamSize}
-            </button>
-          </>
         )}
-      </h1>
+      </div>
       <p>Statut: {status}</p>
       <p>
         ID joueur: <span className="player-label-text">{playerLabel}</span>
