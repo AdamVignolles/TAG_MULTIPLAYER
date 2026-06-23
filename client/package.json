@@ -13,6 +13,7 @@
     "excalibur": "^0.32.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "TAG_MULTIPLAYER": "file:..",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

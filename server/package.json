@@ -1,19 +1,19 @@
 {
   "name": "TAG_MULTIPLAYER",
   "version": "1.0.0",
-  "main": "dist/index.js",
+  "main": "index.ts",
   "type": "module",
   "scripts": {
     "start": "tsx index.ts",
     "dev": "tsx index.ts",
-    "build": "echo 'no build needed'"
+    "build": "echo 'server ready'"
   },
   "dependencies": {
     "ws": "^8.0.0",
     "tsx": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9.3"
   }
 }
