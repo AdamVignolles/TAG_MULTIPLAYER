@@ -104,7 +104,7 @@ export function createSimpleMap(playerRadius: number): Tile[] {
     // Central structure
     tiles.push({ id: 'ctr0', x: 950, y: FLOOR_Y - 300, w: 80, h: 16, type: 'solid' });
     tiles.push({ id: 'ctr1', x: 1050, y: FLOOR_Y - 350, w: 100, h: 16, type: 'speedDown' });
-    tiles.push({ id: 'ctr2', x: 1180, y: FLOOR_Y - 390, w: 120, h: 16, type: 'speedUp' });
+    tiles.push({ id: 'ctr2', x: 1180, y: FLOOR_Y - 400, w: 120, h: 16, type: 'speedUp' });
     tiles.push({ id: 'ctr3', x: 1340, y: FLOOR_Y - 350, w: 100, h: 16, type: 'passable' });
     tiles.push({ id: 'ctr4', x: 1460, y: FLOOR_Y - 315, w: 90, h: 16, type: 'jumpDown' });
 
