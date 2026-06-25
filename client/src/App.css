@@ -468,6 +468,17 @@ button {
   transform: translateY(-50%);
 }
 
+.copyright {
+  position: fixed;
+  bottom: 8px;
+  right: 12px;
+  font-size: 10px;
+  color: rgb(0, 0, 0);
+  pointer-events: none;
+  user-select: none;
+  z-index: 9999;
+}
+
 @keyframes controller-lock-bounce {
   0%, 100% {
     transform: translateX(-50%) translateY(0);

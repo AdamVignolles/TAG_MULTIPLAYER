@@ -538,6 +538,9 @@ export function ScreenApp() {
               </div>
           </section>
         </div>
+        <div className="copyright">
+          © 2026 Ilan LUIS & Adam VIGNOLLES
+        </div>
       </main>
     )
   }
