@@ -31,3 +31,7 @@ npm run server
 ```bash
 npm run dev
 ```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
